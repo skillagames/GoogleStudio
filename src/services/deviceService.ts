@@ -1,0 +1,220 @@
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  writeBatch,
+  serverTimestamp,
+  orderBy,
+  limit
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { addDays } from 'date-fns';
+
+export interface Device {
+  id: string;
+  serialNumber: string;
+  imei: string;
+  iccid: string;
+  name: string;
+  ownerId: string;
+  subscriptionStatus: 'active' | 'expired';
+  expirationDate: any;
+  planId: string;
+  lastUpdated: any;
+}
+
+export interface UsageStat {
+  id: string;
+  timestamp: any;
+  dataUsedMb: number;
+  activeHours: number;
+}
+
+export const deviceService = {
+  async getUserDevices(userId: string) {
+    const q = query(collection(db, 'devices'), where('ownerId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Device));
+  },
+
+  async getDeviceById(deviceId: string) {
+    const docRef = doc(db, 'devices', deviceId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Device;
+    }
+    return null;
+  },
+
+  async registerDevice(data: Omit<Device, 'id' | 'subscriptionStatus' | 'expirationDate' | 'lastUpdated'>) {
+    const newDevice = {
+      ...data,
+      imei: (data as any).imei || 'N/A',
+      iccid: (data as any).iccid || 'N/A',
+      subscriptionStatus: 'active',
+      expirationDate: addDays(new Date(), 30), // Default 30 day trial
+      lastUpdated: serverTimestamp(),
+    };
+    const docRef = await addDoc(collection(db, 'devices'), newDevice);
+    return docRef.id;
+  },
+
+  async renewSubscription(deviceId: string, days: number = 30) {
+    const deviceRef = doc(db, 'devices', deviceId);
+    await updateDoc(deviceRef, {
+      subscriptionStatus: 'active',
+      expirationDate: addDays(new Date(), days),
+      lastUpdated: serverTimestamp(),
+    });
+  },
+
+  async getUsageStats(deviceId: string) {
+    const q = query(
+      collection(db, 'devices', deviceId, 'usage'),
+      orderBy('timestamp', 'desc'),
+      limit(30)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Convert Firestore Timestamp to millis for better chart sorting/rendering
+      const timestamp = data.timestamp?.toMillis?.() || 
+                       (data.timestamp?.seconds ? data.timestamp.seconds * 1000 : Date.now());
+      
+      return { 
+        id: doc.id, 
+        ...data, 
+        timestamp 
+      } as UsageStat;
+    }).reverse();
+  },
+
+  async getAllDevices() {
+    const querySnapshot = await getDocs(collection(db, 'devices'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Device));
+  },
+
+  async syncTelemetry(deviceId: string) {
+    const usageCollection = collection(db, 'devices', deviceId, 'usage');
+    await addDoc(usageCollection, {
+      timestamp: new Date(),
+      dataUsedMb: Math.floor(Math.random() * 50) + 10,
+      activeHours: 1
+    });
+  },
+
+  async seedDeviceUsage(deviceId: string) {
+    const usageCollection = collection(db, 'devices', deviceId, 'usage');
+    for (let i = 0; i < 14; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (13 - i));
+      
+      await addDoc(usageCollection, {
+        timestamp: date,
+        dataUsedMb: Math.floor(Math.random() * 450) + 50,
+        activeHours: Math.floor(Math.random() * 12) + 2
+      });
+    }
+  },
+
+  async seedDevices(userId: string) {
+    const dummyDevices = [
+      {
+        name: "Pro Route X1",
+        serialNumber: "SN-98234-X1",
+        imei: "358762109845321",
+        iccid: "89014103211185101234",
+        subscriptionStatus: "active",
+        expirationDate: addDays(new Date(), 15),
+      },
+      {
+        name: "Compact Terminal V2",
+        serialNumber: "SN-12093-V2",
+        imei: "862341056789123",
+        iccid: "89441012345678901234",
+        subscriptionStatus: "expired",
+        expirationDate: addDays(new Date(), -5),
+      },
+      {
+        name: "Enterprise Hub G5",
+        serialNumber: "SN-55667-G5",
+        imei: "447788992233110",
+        iccid: "89852033445566778899",
+        subscriptionStatus: "active",
+        expirationDate: addDays(new Date(), 45),
+      },
+      {
+        name: "Field Monitor M1",
+        serialNumber: "SN-00231-M1",
+        imei: "112233445566778",
+        iccid: "89000000000000000001",
+        subscriptionStatus: "expired",
+        expirationDate: addDays(new Date(), -12),
+      },
+      {
+        name: "Remote Sensor A9",
+        serialNumber: "SN-44321-A9",
+        imei: "998877665544332",
+        iccid: "89999999999999999992",
+        subscriptionStatus: "expired",
+        expirationDate: addDays(new Date(), -30),
+      },
+      {
+        name: "Gateway Core Z5",
+        serialNumber: "SN-77889-Z5",
+        imei: "554433221100998",
+        iccid: "89777777777777777773",
+        subscriptionStatus: "active",
+        expirationDate: addDays(new Date(), 120),
+      }
+    ];
+
+    for (const device of dummyDevices) {
+      const newDevice = {
+        ...device,
+        ownerId: userId,
+        planId: "standard-plan",
+        lastUpdated: serverTimestamp(),
+      };
+      const docRef = await addDoc(collection(db, 'devices'), newDevice);
+      
+      // Seed 14 days of usage stats for each device
+      const usageCollection = collection(db, 'devices', docRef.id, 'usage');
+      for (let i = 0; i < 14; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (13 - i));
+        
+        await addDoc(usageCollection, {
+          timestamp: date,
+          dataUsedMb: Math.floor(Math.random() * 450) + 50,
+          activeHours: Math.floor(Math.random() * 12) + 2
+        });
+      }
+    }
+  },
+
+  async deleteAllDevices(userId: string) {
+    const q = query(collection(db, 'devices'), where('ownerId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    
+    const batch = writeBatch(db);
+    
+    for (const docSnap of querySnapshot.docs) {
+      // Also delete usage subcollection for each device
+      const usageQ = await getDocs(collection(db, 'devices', docSnap.id, 'usage'));
+      usageQ.docs.forEach(usageDoc => {
+        batch.delete(usageDoc.ref);
+      });
+      
+      batch.delete(docSnap.ref);
+    }
+    
+    await batch.commit();
+  }
+};

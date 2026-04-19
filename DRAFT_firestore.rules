@@ -1,0 +1,70 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && 
+                    request.resource.data.role == 'user' &&
+                    request.resource.data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+                    request.resource.data.keys().size() == 4;
+      allow update: if (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role)) &&
+                    request.resource.data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+                    request.resource.data.keys().size() == 4;
+    }
+
+    // --- Devices ---
+    match /devices/{deviceId} {
+      function isValidDevice(data) {
+        return data.serialNumber is string && data.serialNumber.size() <= 64 &&
+               data.name is string && data.name.size() <= 100 &&
+               data.ownerId is string &&
+               data.subscriptionStatus in ['active', 'expired'] &&
+               data.expirationDate is timestamp;
+      }
+
+      allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidDevice(request.resource.data) && 
+                    (request.resource.data.ownerId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin()) &&
+                    isValidDevice(request.resource.data) &&
+                    request.resource.data.ownerId == resource.data.ownerId; // Owner cannot be changed by user
+      allow delete: if isAdmin();
+    }
+
+    // --- Usage Stats ---
+    match /devices/{deviceId}/usage/{statId} {
+      allow read: if isSignedIn() && (get(/databases/$(database)/documents/devices/$(deviceId)).data.ownerId == request.auth.uid || isAdmin());
+      allow create, write: if isAdmin(); // Usually system-pushed, but admin can manage
+    }
+
+    // --- Plans ---
+    match /plans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

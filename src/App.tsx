@@ -1,0 +1,129 @@
+import React, { useEffect, ReactNode } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Devices from './pages/Devices';
+import DeviceDetails from './pages/DeviceDetails';
+import Scanner from './pages/Scanner';
+import Admin from './pages/Admin';
+import Profile from './pages/Profile';
+import { motion, AnimatePresence } from 'motion/react';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-slate-950">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+    </div>
+  );
+  
+  if (!user) return <Navigate to="/login" />;
+  return <>{children}</>;
+};
+
+// Admin Route Component
+const AdminRoute = ({ children }: { children: ReactNode }) => {
+  const { user, isAdmin, loading } = useAuth();
+  
+  if (loading) return null;
+  if (!user || !isAdmin) return <Navigate to="/" />;
+  return <>{children}</>;
+};
+
+const PageTransition = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="h-full"
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="min-h-screen bg-bg-main font-sans text-slate-800">
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PageTransition>
+                    <Dashboard />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/devices/:id" element={
+              <ProtectedRoute>
+                <Layout showBack>
+                  <PageTransition>
+                    <DeviceDetails />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/devices" element={
+              <ProtectedRoute>
+                <Layout showBack>
+                  <PageTransition>
+                    <Devices />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/scan" element={
+              <ProtectedRoute>
+                <Layout showBack>
+                  <PageTransition>
+                    <Scanner />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin" element={
+              <AdminRoute>
+                <Layout showBack>
+                  <PageTransition>
+                    <Admin />
+                  </PageTransition>
+                </Layout>
+              </AdminRoute>
+            } />
+
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PageTransition>
+                    <Profile />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
