@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone, Scan, AlertCircle, CheckCircle2, Keyboard, Camera as CameraIcon, ArrowRight, X } from 'lucide-react';
-import { Camera as CapacitorCamera } from '@capacitor/camera';
+import { Smartphone, Scan, AlertCircle, CheckCircle2, Keyboard, Camera, ArrowRight, X } from 'lucide-react';
 import { deviceService } from '../services/deviceService';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Capacitor } from '@capacitor/core';
 
 const Scanner: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'scan' | 'manual'>('scan');
@@ -17,42 +15,12 @@ const Scanner: React.FC = () => {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [permissionState, setPermissionState] = useState<string>('prompt');
   
   const { user } = useAuth();
   const navigate = useNavigate();
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isTransitioningRef = useRef(false);
   const scannerId = "reader";
-
-  // New helper to handle native capacitor permissions
-  const requestCameraPermissions = async () => {
-    // Only run this if we are in a native capacitor environment (Android/iOS)
-    if (!Capacitor.isNativePlatform()) return true;
-
-    try {
-      const status = await CapacitorCamera.checkPermissions();
-      
-      if (status.camera === 'granted') {
-        return true;
-      }
-
-      const request = await CapacitorCamera.requestPermissions({
-        permissions: ['camera']
-      });
-
-      if (request.camera === 'granted') {
-        return true;
-      }
-
-      setError("Camera permission denied at OS level. Please check App Settings.");
-      return false;
-    } catch (err) {
-      console.error("Native permission check failed", err);
-      // Fallback: let the browser getUserMedia try anyway
-      return true;
-    }
-  };
 
   const startScanner = async () => {
     if (isTransitioningRef.current) return;
@@ -66,14 +34,6 @@ const Scanner: React.FC = () => {
 
     try {
       isTransitioningRef.current = true;
-      
-      // Step 1: Force native permission prompt if on Android/iOS
-      const hasPermission = await requestCameraPermissions();
-      if (!hasPermission) {
-        isTransitioningRef.current = false;
-        return;
-      }
-
       if (!html5QrCodeRef.current) {
         html5QrCodeRef.current = new Html5Qrcode(scannerId);
       }
@@ -197,7 +157,7 @@ const Scanner: React.FC = () => {
             activeTab === 'scan' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
           )}
         >
-          <CameraIcon className="h-3.5 w-3.5" /> Scan Code
+          <Camera className="h-3.5 w-3.5" /> Scan Code
         </button>
         <button 
           onClick={() => { setActiveTab('manual'); setScanResult(null); }}
