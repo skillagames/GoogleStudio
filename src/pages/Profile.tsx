@@ -92,6 +92,37 @@ const Profile: React.FC = () => {
     }
   };
 
+  const [pngUrl, setPngUrl] = useState<string>('');
+
+  // Generate PNG from SVG data
+  React.useEffect(() => {
+    const generatePng = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw background
+      ctx.fillStyle = '#000000';
+      const radius = 112;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 512, 512, radius);
+      ctx.fill();
+
+      // Draw text
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '900 260px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('IO', 256, 268); // Adjusted Y for visual centering
+
+      setPngUrl(canvas.toDataURL('image/png'));
+    };
+
+    generatePng();
+  }, []);
+
   if (!profile) return null;
 
   return (
@@ -216,9 +247,55 @@ const Profile: React.FC = () => {
         Terminate Session
       </button>
 
-      {/* Footer Branding */}
-      <div className="text-center pt-2">
-        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">IOtConnect core v1.2.0-SIM</p>
+      {/* Footer Branding & Icon Download */}
+      <div className="flex flex-col items-center gap-4 pt-4 border-t border-slate-50">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Master Asset: 512x512</p>
+          <div className="flex gap-4">
+            {/* SVG Version */}
+            <div className="group relative">
+              <img 
+                src="/icon.svg" 
+                alt="IO Core Icon SVG" 
+                className="h-20 w-20 rounded-[18px] shadow-lg border border-slate-100 transition-transform group-hover:scale-105"
+                referrerPolicy="no-referrer"
+              />
+              <a 
+                href="/icon.svg" 
+                download="IOtConnect-Icon.svg"
+                className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/60 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <span className="text-[8px] font-black text-white uppercase tracking-tighter">Save SVG</span>
+              </a>
+            </div>
+
+            {/* PNG Version */}
+            <div className="group relative">
+              {pngUrl ? (
+                <>
+                  <img 
+                    src={pngUrl} 
+                    alt="IO Core Icon PNG" 
+                    className="h-20 w-20 rounded-[18px] shadow-lg border border-slate-100 transition-transform group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                  />
+                  <a 
+                    href={pngUrl} 
+                    download="IOtConnect-Icon.png"
+                    className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <span className="text-[8px] font-black text-white uppercase tracking-tighter">Save PNG</span>
+                  </a>
+                </>
+              ) : (
+                <div className="h-20 w-20 rounded-[18px] border border-dashed border-slate-200 flex items-center justify-center animate-pulse">
+                  <div className="h-4 w-4 bg-slate-100 rounded-full" />
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300 mt-2">IOtConnect core v1.2.0-SIM</p>
+        </div>
       </div>
 
       {/* Edit Profile Modal */}
