@@ -22,29 +22,10 @@ const Scanner: React.FC = () => {
   const isTransitioningRef = useRef(false);
   const scannerId = "reader";
 
-  // ✅ Force camera permission request
-  const requestCameraPermission = async (): Promise<boolean> => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(track => track.stop());
-      return true;
-    } catch (err) {
-      console.error("Permission request failed:", err);
-      setError("Camera permission denied. Please allow camera access.");
-      return false;
-    }
-  };
-
   const startScanner = async () => {
     if (isTransitioningRef.current) return;
-
-    // ✅ Request permission BEFORE starting scanner
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      setCameraActive(false);
-      return;
-    }
     
+    // Check if the reader element exists in the DOM
     const readerElement = document.getElementById(scannerId);
     if (!readerElement) {
       console.warn("Scanner element not found in DOM yet.");
@@ -57,6 +38,7 @@ const Scanner: React.FC = () => {
         html5QrCodeRef.current = new Html5Qrcode(scannerId);
       }
 
+      // If already scanning, don't start again
       if (html5QrCodeRef.current.isScanning) {
         setCameraActive(true);
         isTransitioningRef.current = false;
@@ -79,6 +61,7 @@ const Scanner: React.FC = () => {
       );
     } catch (err: any) {
       console.error("Camera access failed", err);
+      // Only set error if it's a real failure, not just a transition conflict
       if (!err?.toString().includes("already under transition")) {
         setError("Camera access blocked or not found. Try manual entry.");
       }
@@ -109,6 +92,7 @@ const Scanner: React.FC = () => {
     
     const syncScanner = async () => {
       if (activeTab === 'scan' && !scanResult) {
+        // Short delay to ensure DOM is ready and previous state finished
         timeoutId = setTimeout(() => {
           startScanner();
         }, 100);
@@ -348,3 +332,13 @@ const Scanner: React.FC = () => {
 };
 
 export default Scanner;
+
+
+
+
+
+
+
+
+
+
