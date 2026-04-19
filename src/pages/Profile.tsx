@@ -92,71 +92,51 @@ const Profile: React.FC = () => {
     }
   };
 
-  const [pngUrl, setPngUrl] = useState<string>('');
-
-  // Generate PNG from SVG data
-  React.useEffect(() => {
-    const generatePng = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Draw background
-      ctx.fillStyle = '#000000';
-      const radius = 112;
-      ctx.beginPath();
-      ctx.roundRect(0, 0, 512, 512, radius);
-      ctx.fill();
-
-      // Draw text
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 260px Inter, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('IO', 256, 268); // Adjusted Y for visual centering
-
-      setPngUrl(canvas.toDataURL('image/png'));
-    };
-
-    generatePng();
-  }, []);
-
   if (!profile) return null;
 
   return (
     <div className="space-y-4 pb-8">
       {/* Compressed Header */}
-      <header className="relative flex flex-col items-center pt-2">
+      <header className="relative text-center pt-2">
         <button 
           onClick={handleOpenEdit}
-          className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-primary transition-colors active:scale-95 border border-slate-100"
+          className="absolute right-2 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-primary transition-colors active:scale-95"
           title="Edit Profile"
         >
-          <Edit3 className="h-3.5 w-3.5" />
+          <Edit3 className="h-4 w-4" />
         </button>
 
-        <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-100 text-slate-900 shadow-sm border border-slate-200">
-          <User className="h-6 w-6" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[24px] bg-slate-100 text-slate-900 shadow-sm border border-slate-200">
+          <User className="h-8 w-8" />
         </div>
-        <h2 className="mt-2 text-lg font-black tracking-tight text-slate-900 leading-none">
+        <h2 className="mt-3 text-xl font-black tracking-tight text-slate-900 leading-none">
           {profile.displayName || profile.email.split('@')[0]}
         </h2>
-        <p className="mt-0.5 text-[8px] text-slate-400 font-bold uppercase tracking-widest">{profile.email}</p>
+        <p className="mt-1 text-[9px] text-slate-400 font-bold uppercase tracking-widest">{profile.email}</p>
       </header>
 
-      {/* Lean Metadata Bar */}
-      <section className="flex items-center justify-center gap-1.5 py-1">
-        <div className="flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-1.5 shadow-sm">
-           <Shield className="h-3 w-3 text-slate-400" />
-           <span className="text-[9px] font-black uppercase tracking-wider text-slate-900">{profile.role}</span>
+      {/* Optimized Info Grid */}
+      <section className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1 rounded-[20px] border border-slate-100 bg-white p-3 shadow-sm">
+           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+              <Shield className="h-4 w-4" />
+           </div>
+           <div>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Identity</p>
+              <p className="font-bold text-slate-900 uppercase text-[10px] truncate">{profile.role}</p>
+           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-1.5 shadow-sm">
-           <Calendar className="h-3 w-3 text-slate-400" />
-           <span className="text-[9px] font-black uppercase tracking-wider text-slate-900">
-             {formatDate(profile?.createdAt, 'MMM yy')}
-           </span>
+
+        <div className="flex flex-col gap-1 rounded-[20px] border border-slate-100 bg-white p-3 shadow-sm">
+           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+              <Calendar className="h-4 w-4" />
+           </div>
+           <div>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Joined</p>
+              <p className="font-bold text-slate-900 text-[10px] truncate">
+                {formatDate(profile?.createdAt, 'MMM dd, yy')}
+              </p>
+           </div>
         </div>
       </section>
 
@@ -186,51 +166,52 @@ const Profile: React.FC = () => {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="rounded-[24px] border border-slate-900 bg-slate-900 p-4 text-white shadow-xl shadow-slate-900/10">
+              <div className="rounded-[28px] border border-slate-900 bg-slate-900 p-5 text-white shadow-xl shadow-slate-900/10">
                  <div className="space-y-0.5">
-                    <h4 className="text-[11px] font-bold text-emerald-400 uppercase tracking-tight">Simulation Mode</h4>
-                    <p className="text-[8px] font-medium text-slate-400">Inject synthetic device manifests.</p>
+                    <h4 className="text-xs font-bold text-emerald-400">Simulation Mode</h4>
+                    <p className="text-[9px] font-medium text-slate-400">Inject synthetic device manifests into the production database.</p>
                  </div>
 
                  <button 
                    onClick={handleSeedData}
                    disabled={loading || isDeleting}
-                   className="relative mt-3 flex w-full items-center justify-between overflow-hidden rounded-xl bg-white/10 px-3.5 py-3 transition-all hover:bg-white/20 active:scale-95 disabled:opacity-50"
+                   className="relative mt-4 flex w-full items-center justify-between overflow-hidden rounded-[16px] bg-white/10 px-4 py-3.5 transition-all hover:bg-white/20 active:scale-95 disabled:opacity-50"
                  >
-                   <div className="flex items-center gap-2.5">
+                   <div className="flex items-center gap-3">
                      {loading ? (
-                       <RefreshCw className="h-3 w-3 animate-spin text-emerald-400" />
+                       <RefreshCw className="h-3.5 w-3.5 animate-spin text-emerald-400" />
                      ) : success ? (
-                       <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                      ) : (
-                       <Database className="h-3 w-3 text-white" />
+                       <Database className="h-3.5 w-3.5 text-white" />
                      )}
-                     <span className="text-[9px] font-black uppercase tracking-widest text-left">
+                     <span className="text-[10px] font-black uppercase tracking-widest text-left">
                        {loading ? 'Transmitting...' : success ? 'Payload Synced' : 'Seed Lab Data'}
                      </span>
                    </div>
+                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                  </button>
 
                  <button 
                     onClick={toggleInsights}
-                    className="mt-1.5 flex w-full items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5 transition-all hover:bg-white/10 active:scale-95"
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
-                    <div className="flex items-center gap-2.5">
-                      {profile?.showInsights === false ? <EyeOff className="h-3 w-3 text-slate-400" /> : <Eye className="h-3 w-3 text-emerald-400" />}
-                      <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
-                        {profile?.showInsights === false ? 'Enable Insights' : 'Disable Insights'}
+                    <div className="flex items-center gap-3">
+                      {profile?.showInsights === false ? <EyeOff className="h-3.5 w-3.5 text-slate-400" /> : <Eye className="h-3.5 w-3.5 text-emerald-400" />}
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                        {profile?.showInsights === false ? 'Enable Insights Mode' : 'Disable Insights Mode'}
                       </span>
                     </div>
-                    <div className={cn("h-1 w-1 rounded-full", profile?.showInsights === false ? "bg-slate-600" : "bg-emerald-400")} />
+                    <div className={cn("h-1.5 w-1.5 rounded-full", profile?.showInsights === false ? "bg-slate-600" : "bg-emerald-400")} />
                   </button>
 
                  <button 
                     onClick={() => setShowConfirmDelete(true)}
                     disabled={loading || isDeleting}
-                    className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-white/40 hover:text-red-400 transition-all active:scale-95 disabled:opacity-50"
+                    className="mt-1 flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-white/40 hover:text-red-400 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <Trash2 className="h-3 w-3" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Clear Device Pool</span>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Clear Device Pool</span>
                   </button>
               </div>
             </motion.div>
@@ -241,61 +222,15 @@ const Profile: React.FC = () => {
       {/* Log Out Button */}
       <button 
         onClick={handleLogout}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-[9px] font-black uppercase tracking-widest text-red-500 transition-all border border-slate-200 active:scale-95 shadow-sm hover:bg-red-50 hover:border-red-100"
+        className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-slate-50 py-4 text-[10px] font-black uppercase tracking-widest text-red-500 transition-all active:scale-95"
       >
-        <LogOut className="h-3 w-3" />
+        <LogOut className="h-3.5 w-3.5" />
         Terminate Session
       </button>
 
-      {/* Footer Branding & Icon Download */}
-      <div className="flex flex-col items-center gap-4 pt-4 border-t border-slate-50">
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Master Asset: 512x512</p>
-          <div className="flex gap-4">
-            {/* SVG Version */}
-            <div className="group relative">
-              <img 
-                src="/icon.svg" 
-                alt="IO Core Icon SVG" 
-                className="h-20 w-20 rounded-[18px] shadow-lg border border-slate-100 transition-transform group-hover:scale-105"
-                referrerPolicy="no-referrer"
-              />
-              <a 
-                href="/icon.svg" 
-                download="IOtConnect-Icon.svg"
-                className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/60 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <span className="text-[8px] font-black text-white uppercase tracking-tighter">Save SVG</span>
-              </a>
-            </div>
-
-            {/* PNG Version */}
-            <div className="group relative">
-              {pngUrl ? (
-                <>
-                  <img 
-                    src={pngUrl} 
-                    alt="IO Core Icon PNG" 
-                    className="h-20 w-20 rounded-[18px] shadow-lg border border-slate-100 transition-transform group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
-                  <a 
-                    href={pngUrl} 
-                    download="IOtConnect-Icon.png"
-                    className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 rounded-[18px] opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <span className="text-[8px] font-black text-white uppercase tracking-tighter">Save PNG</span>
-                  </a>
-                </>
-              ) : (
-                <div className="h-20 w-20 rounded-[18px] border border-dashed border-slate-200 flex items-center justify-center animate-pulse">
-                  <div className="h-4 w-4 bg-slate-100 rounded-full" />
-                </div>
-              )}
-            </div>
-          </div>
-          <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300 mt-2">IOtConnect core v1.2.0-SIM</p>
-        </div>
+      {/* Footer Branding */}
+      <div className="text-center pt-2">
+        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">IOtConnect core v1.2.0-SIM</p>
       </div>
 
       {/* Edit Profile Modal */}
