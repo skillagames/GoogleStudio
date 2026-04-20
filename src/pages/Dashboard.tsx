@@ -10,13 +10,14 @@ const Dashboard: React.FC = () => {
   const { user, profile } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'active' | 'expired' | null>(null);
+  const [filter, setFilter] = useState<'active' | 'expired' | 'inactive' | null>(null);
   const [isSticky, setIsSticky] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       loadDevices();
+      deviceService.seedMasterRegistry();
     }
   }, [user]);
 
@@ -97,7 +98,7 @@ const Dashboard: React.FC = () => {
         "sticky top-[64px] z-20 py-2 transition-colors duration-200",
         isSticky ? "bg-bg-main/90 backdrop-blur-md" : "bg-transparent"
       )}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <StatCard 
             label="ACTIVE" 
             value={devices.filter(d => d.subscriptionStatus === 'active').length.toString()} 
@@ -113,6 +114,14 @@ const Dashboard: React.FC = () => {
             icon={AlertCircle}
             isActive={filter === 'expired'}
             onClick={() => setFilter(filter === 'expired' ? null : 'expired')}
+          />
+          <StatCard 
+            label="PENDING" 
+            value={devices.filter(d => d.subscriptionStatus === 'inactive').length.toString()} 
+            color="slate" 
+            icon={Smartphone}
+            isActive={filter === 'inactive'}
+            onClick={() => setFilter(filter === 'inactive' ? null : 'inactive')}
           />
         </div>
       </section>
@@ -261,18 +270,20 @@ const LogItem = ({ icon: Icon, title, desc, time, color }: { icon: any, title: s
 
 const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }) => {
   const isExpired = device.subscriptionStatus === 'expired';
+  const isInactive = device.subscriptionStatus === 'inactive';
   
   return (
     <button 
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[24px] bg-white p-1.5 pr-5 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50" : "border-slate-100 hover:border-slate-300"
+        isExpired ? "border-red-100/50" : isInactive ? "border-slate-50 opacity-90 border-dashed" : "border-slate-100 hover:border-slate-300"
       )}
     >
       <div className={cn(
         "flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-slate-50 text-slate-900 transition-colors group-hover:bg-slate-900 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-400"
+        isExpired && "bg-red-50 text-red-400",
+        isInactive && "bg-slate-100 text-slate-400"
       )}>
         <Smartphone className="h-6 w-6" />
       </div>
@@ -280,8 +291,10 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
       <div className="flex-1 text-left">
         <h4 className="text-sm font-black tracking-tight text-slate-900 line-clamp-1">{device.name}</h4>
         <div className="flex items-center gap-1.5 font-mono text-[8px] font-bold uppercase tracking-tight">
-          <span className={isExpired ? "text-red-500" : "text-emerald-500"}>
-            {isExpired ? 'DORMANT' : `SYNC: ${formatDate(device.expirationDate, 'MMM dd')}`}
+          <span className={cn(
+             isExpired ? "text-red-500" : isInactive ? "text-slate-400" : "text-emerald-500"
+          )}>
+            {isExpired ? 'Expired' : isInactive ? 'Not Active' : 'Active'}
           </span>
         </div>
       </div >
@@ -291,31 +304,34 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
   );
 };
 
-const StatCard = ({ label, value, color, icon: Icon, isActive, onClick }: { label: string; value: string; color: 'emerald' | 'orange'; icon: any; isActive: boolean; onClick: () => void }) => (
+const StatCard = ({ label, value, color, icon: Icon, isActive, onClick }: { label: string; value: string; color: 'emerald' | 'orange' | 'slate'; icon: any; isActive: boolean; onClick: () => void }) => (
   <button 
     onClick={onClick}
     className={cn(
-      "relative overflow-hidden rounded-[20px] border transition-all text-left p-3 shadow-sm active:scale-95",
+      "relative overflow-hidden rounded-[20px] border transition-all text-left p-2.5 shadow-sm active:scale-95",
       isActive 
-        ? (color === 'emerald' ? "border-emerald-500 bg-emerald-50/50 ring-1 ring-inset ring-emerald-500" : "border-orange-500 bg-orange-50/50 ring-1 ring-inset ring-orange-500") 
+        ? (color === 'emerald' ? "border-emerald-500 bg-emerald-50/50 ring-1 ring-inset ring-emerald-500" : 
+           color === 'orange' ? "border-orange-500 bg-orange-50/50 ring-1 ring-inset ring-orange-500" :
+           "border-slate-500 bg-slate-50/50 ring-1 ring-inset ring-slate-500") 
         : "border-slate-100 bg-white"
     )}
   >
     <div className={cn(
       "absolute -right-2 -top-2 h-8 w-8 opacity-[0.03]",
-      color === 'emerald' ? "text-emerald-500" : "text-orange-500"
+      color === 'emerald' ? "text-emerald-500" : color === 'orange' ? "text-orange-500" : "text-slate-500"
     )}>
       <Icon className="h-full w-full" />
     </div>
     <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
     <div className="flex items-center gap-1.5 text-slate-900">
       <span className={cn(
-        "text-base font-black tracking-tighter",
-        color === 'orange' && !isActive && "text-orange-600"
+        "text-sm font-black tracking-tighter",
+        color === 'orange' && !isActive && "text-orange-600",
+        color === 'slate' && !isActive && "text-slate-600"
       )}>{value}</span>
       <div className={cn(
         "h-1.5 w-1.5 rounded-full",
-        color === 'emerald' ? "bg-emerald-400" : "bg-orange-500"
+        color === 'emerald' ? "bg-emerald-400" : color === 'orange' ? "bg-orange-500" : "bg-slate-400"
       )} />
     </div>
   </button>

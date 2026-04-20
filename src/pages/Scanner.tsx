@@ -12,6 +12,7 @@ const Scanner: React.FC = () => {
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const [isHardwareLocked, setIsHardwareLocked] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -154,21 +155,34 @@ const Scanner: React.FC = () => {
     };
   }, [activeTab, scanResult]);
 
-  const handleDetected = (code: string) => {
-    setScanResult(code);
-    setDeviceInfo({
-      serialNumber: code,
-      name: `Terminal ${code.substring(0, 4).toUpperCase()}`,
-      imei: '',
-      iccid: ''
-    });
-    stopScanner();
+  const handleDetected = async (code: string) => {
+    try {
+      const hardwareData = await deviceService.verifyHardware(code);
+      if (!hardwareData) {
+        setError("Core Recon Failed: Doesn't recognize device.");
+        setScanResult(null);
+        return;
+      }
+
+      setScanResult(code);
+      setIsHardwareLocked(true); // Always lock if found in master registry
+      setDeviceInfo({
+        serialNumber: code,
+        name: hardwareData.model || `Terminal ${code.substring(0, 4).toUpperCase()}`,
+        imei: hardwareData.imei || 'N/A',
+        iccid: hardwareData.iccid || 'N/A'
+      });
+      stopScanner();
+    } catch (err) {
+      console.error("Verification error", err);
+      setError("System check failed. Please try again.");
+    }
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
+  const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim()) return;
-    handleDetected(manualCode.trim());
+    await handleDetected(manualCode.trim());
   };
 
   const handleRegister = async () => {
@@ -311,53 +325,63 @@ const Scanner: React.FC = () => {
               key="result"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
+              className="space-y-3 px-1 pb-4"
             >
-              <div className="rounded-[32px] border-2 border-slate-900 bg-white p-6 shadow-xl shadow-slate-900/5">
-                <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 className="h-6 w-6" />
+              <div className="rounded-[28px] border-2 border-slate-900 bg-white p-4 shadow-xl shadow-slate-900/5">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-0.5">
+                    <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Node Identified</h4>
+                    <p className="text-sm font-black tracking-tight text-slate-900 font-mono leading-none">SN: {deviceInfo?.serialNumber}</p>
+                    <div className="h-0.5 w-12 bg-emerald-400 rounded-full mt-1" />
                   </div>
-                  <button onClick={() => setScanResult(null)} className="rounded-full bg-slate-50 p-2 text-slate-400 hover:bg-slate-100">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                
-                <div className="mt-6 space-y-1">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Node Identified</h4>
-                  <p className="text-lg font-black tracking-tight text-slate-900 font-mono underline decoration-emerald-400">SN: {deviceInfo?.serialNumber}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-emerald-50 text-emerald-600">
+                      <CheckCircle2 className="h-4.5 w-4.5" />
+                    </div>
+                    <button onClick={() => setScanResult(null)} className="rounded-full bg-slate-50 p-1.5 text-slate-400 hover:bg-slate-100 transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mt-6 space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 px-1">Friendly Name</label>
+                <div className="mt-4 space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">Friendly Name</label>
                     <input 
                       type="text"
                       value={deviceInfo?.name}
                       onChange={(e) => setDeviceInfo({ ...deviceInfo, name: e.target.value })}
-                      className="w-full rounded-[18px] bg-slate-50 border-2 border-slate-50 p-4 text-xs font-bold text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none transition-all"
+                      className="w-full rounded-[14px] bg-slate-50 border-2 border-slate-50 p-2.5 text-xs font-bold text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none transition-all"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 px-1">IMEI</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">IMEI</label>
                       <input 
                         type="text"
                         placeholder="..."
+                        readOnly={isHardwareLocked}
                         value={deviceInfo?.imei}
                         onChange={(e) => setDeviceInfo({ ...deviceInfo, imei: e.target.value })}
-                        className="w-full rounded-[18px] bg-slate-50 border-2 border-slate-50 p-4 text-[10px] font-bold text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none transition-all"
+                        className={cn(
+                          "w-full rounded-[14px] border-2 p-2.5 text-[10px] font-bold transition-all focus:outline-none",
+                          isHardwareLocked ? "bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed" : "bg-slate-50 border-slate-50 text-slate-900 focus:border-slate-900 focus:bg-white"
+                        )}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 px-1">ICCID</label>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 px-1">ICCID</label>
                       <input 
                         type="text"
                         placeholder="..."
+                        readOnly={isHardwareLocked}
                         value={deviceInfo?.iccid}
                         onChange={(e) => setDeviceInfo({ ...deviceInfo, iccid: e.target.value })}
-                        className="w-full rounded-[18px] bg-slate-50 border-2 border-slate-50 p-4 text-[10px] font-bold text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none transition-all"
+                        className={cn(
+                          "w-full rounded-[14px] border-2 p-2.5 text-[10px] font-bold transition-all focus:outline-none",
+                          isHardwareLocked ? "bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed" : "bg-slate-50 border-slate-50 text-slate-900 focus:border-slate-900 focus:bg-white"
+                        )}
                       />
                     </div>
                   </div>
@@ -365,10 +389,10 @@ const Scanner: React.FC = () => {
                   <button 
                     onClick={handleRegister}
                     disabled={registering}
-                    className="flex w-full items-center justify-center gap-3 rounded-[20px] bg-slate-900 py-5 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-slate-900 py-3.5 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
                   >
                     {registering ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     ) : "Commit Registration"}
                   </button>
                 </div>

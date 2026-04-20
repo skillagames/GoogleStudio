@@ -11,7 +11,7 @@ const Devices: React.FC = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired' | 'inactive'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
@@ -87,19 +87,19 @@ const Devices: React.FC = () => {
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="flex gap-2 py-1">
-                  {(['all', 'active', 'expired'] as const).map((status) => (
+                <div className="flex gap-1.5 py-1">
+                  {(['all', 'active', 'expired', 'inactive'] as const).map((status) => (
                     <button
                       key={status}
                       onClick={() => setStatusFilter(status)}
                       className={cn(
-                        "flex-1 rounded-xl py-2.5 text-[9px] font-black uppercase tracking-widest transition-all",
+                        "flex-1 rounded-xl py-2.5 text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
                         statusFilter === status 
                           ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10" 
                           : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600"
                       )}
                     >
-                      {status}
+                      {status === 'inactive' ? 'Not Active' : status}
                     </button>
                   ))}
                 </div>
@@ -136,18 +136,20 @@ const Devices: React.FC = () => {
 
 const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }) => {
   const isExpired = device.subscriptionStatus === 'expired';
+  const isInactive = device.subscriptionStatus === 'inactive';
   
   return (
     <button 
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[28px] bg-white p-2 pr-6 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50" : "border-slate-100 hover:border-slate-900 hover:shadow-xl hover:shadow-slate-900/5"
+        isExpired ? "border-red-100/50" : isInactive ? "border-slate-100 border-dashed opacity-80" : "border-slate-100 hover:border-slate-900 hover:shadow-xl hover:shadow-slate-900/5"
       )}
     >
       <div className={cn(
         "flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-slate-50 text-slate-900 transition-colors group-hover:bg-slate-900 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-500"
+        isExpired && "bg-red-50 text-red-500",
+        isInactive && "bg-slate-50 text-slate-300"
       )}>
         <Smartphone className="h-7 w-7" />
       </div>
@@ -157,8 +159,10 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
         <div className="mt-0.5 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-tight text-slate-400">
           <span>SN:{device.serialNumber.slice(-6)}</span>
           <span className="h-1 w-1 rounded-full bg-slate-200" />
-          <span className={isExpired ? "text-red-500" : "text-emerald-500"}>
-            {isExpired ? 'Dormant' : 'Active'}
+          <span className={cn(
+            isExpired ? "text-red-500" : isInactive ? "text-slate-400" : "text-emerald-500"
+          )}>
+            {isExpired ? 'Expired' : isInactive ? 'Not Active' : 'Active'}
           </span>
         </div>
       </div >

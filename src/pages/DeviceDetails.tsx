@@ -13,7 +13,9 @@ import {
   CheckCircle2, 
   XCircle,
   AlertTriangle,
-  CreditCard
+  CreditCard,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -34,30 +36,10 @@ const DeviceDetails: React.FC = () => {
   const [stats, setStats] = useState<UsageStat[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(0);
-  const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Validate origin to ensure it's from our app
-      if (event.origin !== window.location.origin) return;
-      
-      if (event.data?.type === 'PAYFAST_PAYMENT_RESULT') {
-        const { status } = event.data;
-        if (status === 'success') {
-          setPaymentStatus('success');
-          // Wait a bit then refresh device data
-          setTimeout(loadData, 2000);
-        } else {
-          setPaymentStatus('cancel');
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   const PLANS = [
     { id: 0, name: "Starter Pulse", price: "$4.99", desc: "Basic connectivity for 30 days" },
@@ -100,78 +82,27 @@ const DeviceDetails: React.FC = () => {
 
   const handleRenew = async () => {
     setIsRenewing(true);
+    // Simulate delay
+    await new Promise(r => setTimeout(r, 1500));
     try {
-      const plan = PLANS[selectedPlan];
-      // PayFast requires amount to have 2 decimal places (e.g. 10.00)
-      const amount = parseFloat(plan.price.replace('$', '')).toFixed(2);
-      const m_payment_id = `INFRA-${id}-${Date.now()}`;
-      
-      // Use our backend callback route
-      const baseUrl = window.location.origin;
-      const return_url = `${baseUrl}/api/payments/payfast-callback?status=success`;
-      const cancel_url = `${baseUrl}/api/payments/payfast-callback?status=cancel`;
-      const notify_url = 'https://webhook.site/placeholder';
-      
-      // Request signature from our backend
-      const response = await fetch('/api/payments/payfast-signature', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          item_name: plan.name,
-          m_payment_id,
-          return_url,
-          cancel_url,
-          notify_url 
-        })
-      });
-
-      const { signature, merchant_id, merchant_key, sandbox_url } = await response.json();
-
-      // Clear renewing state
-      setIsRenewing(false);
+      await deviceService.renewSubscription(id!);
+      await loadData();
       setShowRenewModal(false);
-
-      // Open a popup for the payment
-      const paymentWindow = window.open('about:blank', 'payfast_popup', 'width=500,height=700');
-      
-      if (!paymentWindow) {
-        alert('Please allow popups to complete the payment.');
-        return;
-      }
-
-      // Create and submit PayFast form in the POPUP
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = sandbox_url;
-      form.target = 'payfast_popup';
-
-      const fields = {
-        merchant_id,
-        merchant_key,
-        return_url,
-        cancel_url,
-        notify_url,
-        m_payment_id,
-        amount,
-        item_name: plan.name,
-        signature
-      };
-
-      Object.entries(fields).forEach(([key, value]) => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value as string;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(form);
-      form.submit();
-
     } catch (err) {
-      console.error('Payment initialization failed:', err);
+      console.error(err);
+    } finally {
       setIsRenewing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deviceService.removeDevice(id!);
+      navigate('/devices');
+    } catch (err) {
+      console.error(err);
+      setIsDeleting(false);
     }
   };
 
@@ -179,51 +110,16 @@ const DeviceDetails: React.FC = () => {
   if (!device) return <div className="text-center py-12 text-slate-500">Device not found</div>;
 
   const isExpired = device.subscriptionStatus === 'expired';
-  const expirationDate = new Date(device.expirationDate.seconds * 1000);
+  const isInactive = device.subscriptionStatus === 'inactive';
+  const expirationDate = device.expirationDate ? new Date(device.expirationDate.seconds * 1000) : null;
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Payment Status Banners */}
-      <AnimatePresence>
-        {paymentStatus === 'success' && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-              <div>
-                <p className="text-xs font-black text-emerald-900 uppercase">Protocol Success</p>
-                <p className="text-[10px] text-emerald-600 font-medium">Node subscription is currently processing renewal.</p>
-              </div>
-              <button onClick={() => setPaymentStatus(null)} className="ml-auto text-emerald-400"><XCircle className="h-4 w-4" /></button>
-            </div>
-          </motion.div>
-        )}
-        {paymentStatus === 'cancel' && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="overflow-hidden"
-          >
-            <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-slate-400" />
-              <div>
-                <p className="text-xs font-black text-slate-900 uppercase">Action Aborted</p>
-                <p className="text-[10px] text-slate-500 font-medium">The payment process was cancelled by the operator.</p>
-              </div>
-              <button onClick={() => setPaymentStatus(null)} className="ml-auto text-slate-300"><XCircle className="h-4 w-4" /></button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Header Card */}
       <section className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
          <div className={cn(
             "absolute -right-8 -top-8 h-32 w-32 rounded-full blur-3xl",
-            isExpired ? "bg-red-500/10" : "bg-primary/10"
+            isExpired ? "bg-red-500/10" : isInactive ? "bg-slate-500/10" : "bg-primary/10"
           )} />
           
           <div className="relative flex justify-between items-start">
@@ -236,25 +132,35 @@ const DeviceDetails: React.FC = () => {
               </div>
             </div>
             <div className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-tight",
-              isExpired ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600"
+              "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-tight whitespace-nowrap",
+              isExpired && "bg-red-50 text-red-500",
+              isInactive && "bg-slate-100 text-slate-500",
+              !isExpired && !isInactive && "bg-emerald-50 text-emerald-600"
             )}>
-              {isExpired ? <XCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-              {device.subscriptionStatus}
+              {isExpired ? <XCircle className="h-3 w-3" /> : isInactive ? <AlertCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+              {isInactive ? 'Not Active' : device.subscriptionStatus}
             </div>
           </div>
 
           <div className="mt-8 flex gap-4">
              <div className="flex-1">
-                <p className="text-[10px] uppercase font-bold text-slate-500">Expires</p>
-                <p className="text-lg font-bold text-slate-900">{formatDate(device.expirationDate, 'MMM dd, yyyy')}</p>
+                <p className="text-[10px] uppercase font-bold text-slate-500">
+                  {isInactive ? 'Connectivity' : 'Expires'}
+                </p>
+                <p className="text-lg font-bold text-slate-900">
+                  {isInactive ? 'Awaiting Provision' : formatDate(device.expirationDate, 'MMM dd, yyyy')}
+                </p>
              </div>
-             {isExpired && (
+             {(isExpired || isInactive) && (
                 <button 
                   onClick={() => setShowRenewModal(true)}
-                  className="flex items-center gap-2 rounded-lg bg-orange-500 px-6 py-2 text-sm font-bold text-white transition-transform active:scale-95 shadow-lg shadow-orange-500/20"
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-bold text-white transition-transform active:scale-95 shadow-lg",
+                    isInactive ? "bg-slate-900 shadow-slate-900/20" : "bg-orange-500 shadow-orange-500/20"
+                  )}
                 >
-                  <RefreshCcw className="h-4 w-4" /> Renew
+                  <RefreshCcw className="h-4 w-4" /> 
+                  {isInactive ? 'Add Plan' : 'Renew'}
                 </button>
              )}
           </div>
@@ -344,6 +250,17 @@ const DeviceDetails: React.FC = () => {
         </div>
       </section>
 
+      {/* Danger Zone */}
+      <section className="pt-4">
+        <button 
+          onClick={() => setShowDeleteModal(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50/30 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 transition-all active:scale-[0.98] hover:bg-red-50"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Decommission Node
+        </button>
+      </section>
+
       {/* Renew Modal */}
       <AnimatePresence>
         {showRenewModal && (
@@ -400,6 +317,58 @@ const DeviceDetails: React.FC = () => {
                     className="w-full py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
                    >
                      Abort Action
+                   </button>
+                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-sm rounded-[32px] bg-white p-5 shadow-2xl overflow-hidden"
+            >
+              <div className="flex flex-col items-center text-center">
+                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-500 mb-3">
+                    <AlertCircle className="h-5 w-5" />
+                 </div>
+                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Decommission Node?</h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 px-4 leading-relaxed">
+                   This will permanently purge all telemetry and historical usage data.
+                 </p>
+                 
+                 <div className="mt-6 w-full space-y-2">
+                   <button 
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-red-500 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-500/10 transition-all hover:bg-red-600 active:scale-95 disabled:opacity-50"
+                   >
+                     {isDeleting ? (
+                       <RefreshCcw className="h-4 w-4 animate-spin" />
+                     ) : (
+                       <>Purge Node</>
+                     )}
+                   </button>
+                   <button 
+                    onClick={() => setShowDeleteModal(false)}
+                    className="w-full py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                   >
+                     Cancel
                    </button>
                  </div>
               </div>

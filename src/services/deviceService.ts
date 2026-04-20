@@ -23,7 +23,7 @@ export interface Device {
   iccid: string;
   name: string;
   ownerId: string;
-  subscriptionStatus: 'active' | 'expired';
+  subscriptionStatus: 'active' | 'expired' | 'inactive';
   expirationDate: any;
   planId: string;
   lastUpdated: any;
@@ -57,12 +57,47 @@ export const deviceService = {
       ...data,
       imei: (data as any).imei || 'N/A',
       iccid: (data as any).iccid || 'N/A',
-      subscriptionStatus: 'active',
-      expirationDate: addDays(new Date(), 30), // Default 30 day trial
+      subscriptionStatus: 'inactive', // New devices start as not active
+      expirationDate: null, // No expiration yet
       lastUpdated: serverTimestamp(),
     };
     const docRef = await addDoc(collection(db, 'devices'), newDevice);
     return docRef.id;
+  },
+
+  async verifyHardware(serialNumber: string) {
+    const q = query(collection(db, 'master_registry'), where('serialNumber', '==', serialNumber));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    return querySnapshot.docs[0].data();
+  },
+
+  async seedMasterRegistry() {
+    const registryRef = collection(db, 'master_registry');
+    const q = query(registryRef, where('serialNumber', '==', '6001237010828'));
+    const snapshot = await getDocs(q);
+    
+    const masterData = {
+      serialNumber: '6001237010828',
+      imei: '358762109845321',
+      iccid: '89014103211185101234',
+      model: 'IoT-Hub-X1',
+      manufacturer: 'IoTConnect Labs',
+      lastSeeded: serverTimestamp()
+    };
+
+    if (snapshot.empty) {
+      await addDoc(registryRef, {
+        ...masterData,
+        createdAt: serverTimestamp()
+      });
+      console.log("Master Registry: New test device provisioned.");
+    } else {
+      // Force update existing record to ensure it has all fields
+      const docId = snapshot.docs[0].id;
+      await updateDoc(doc(db, 'master_registry', docId), masterData);
+      console.log("Master Registry: Test device updated with latest descriptors.");
+    }
   },
 
   async renewSubscription(deviceId: string, days: number = 30) {
@@ -107,6 +142,21 @@ export const deviceService = {
       dataUsedMb: Math.floor(Math.random() * 50) + 10,
       activeHours: 1
     });
+  },
+
+  async removeDevice(deviceId: string) {
+    const batch = writeBatch(db);
+    
+    // Delete usage subcollection
+    const usageQ = await getDocs(collection(db, 'devices', deviceId, 'usage'));
+    usageQ.docs.forEach(usageDoc => {
+      batch.delete(usageDoc.ref);
+    });
+    
+    // Delete the device itself
+    batch.delete(doc(db, 'devices', deviceId));
+    
+    await batch.commit();
   },
 
   async seedDeviceUsage(deviceId: string) {
