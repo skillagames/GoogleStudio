@@ -2,7 +2,8 @@
   "name": "IoT Connect App",
   "description": "A modern device management app with barcode scanning, subscription tracking, and real-time usage statistics.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "notifications"
   ],
   "majorCapabilities": []
 }

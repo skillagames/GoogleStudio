@@ -94,9 +94,13 @@ const Profile: React.FC = () => {
   };
 
   const handleTestNotification = async () => {
+    if (!user) return;
+    const alerts = await notificationService.getAlerts(user.uid);
+    const expiredCount = alerts.filter(a => a.type === 'expired').length;
+
     await notificationService.notify({
-      title: 'Operational Transmission Test',
-      body: 'Protocol verification complete. Push notification pipeline is active.',
+      title: 'Device Status Alert',
+      body: `You have (${expiredCount}) expired devices that require attention.`,
       tag: 'test-notification'
     });
   };
@@ -219,13 +223,41 @@ const Profile: React.FC = () => {
                     className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
                     <div className="flex items-center gap-3">
-                      <Bell className="h-3.5 w-3.5 text-blue-400" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
-                        Test Push Pipeline
-                      </span>
+                      <Bell className={cn("h-3.5 w-3.5", notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400' : 'text-blue-400')} />
+                      <div className="text-left">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
+                          Test Push Pipeline
+                        </span>
+                        <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
+                          Status: {notificationService.getPermissionStatus()}
+                        </span>
+                      </div>
                     </div>
                     <RefreshCw className="h-3 w-3 text-slate-600" />
                   </button>
+
+                  {notificationService.getPermissionStatus() === 'denied' && (
+                    <p className="mt-2 text-[8px] font-medium text-red-500 bg-red-400/10 px-3 py-2 rounded-lg border border-red-400/20">
+                      <span className="text-red-500 font-bold uppercase mr-1">Access Blocked:</span>
+                      Notifications are explicitly denied. Please click the <span className="font-black underline">Lock Icon</span> in your address bar to reset site permissions.
+                    </p>
+                  )}
+
+                  {window.self !== window.top && (
+                    <div className="mt-2 space-y-2">
+                       <p className="text-[8px] font-medium text-slate-500 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800">
+                        <span className="text-orange-400 font-bold uppercase mr-1">Preview Limit:</span>
+                        Testing notifications inside this frame is unreliable. Use the button below to launch the system in a separate environment.
+                      </p>
+                      <button 
+                        onClick={() => window.open(window.location.href, '_blank')}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary/10 border border-primary/20 py-2.5 text-[9px] font-black uppercase tracking-widest text-primary transition-all active:scale-95"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        Launch in New Tab
+                      </button>
+                    </div>
+                  )}
 
                   <button 
                     onClick={() => setShowConfirmDelete(true)}

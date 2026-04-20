@@ -24,42 +24,93 @@ class NotificationService {
   }
 
   public async requestPermission(): Promise<boolean> {
-    if (!('Notification' in window)) return false;
+    if (!('Notification' in window)) {
+      console.warn('Notifications not supported in this browser');
+      return false;
+    }
+    
+    // Check if we are in an iframe
+    const inIframe = window.self !== window.top;
+    if (inIframe) {
+      console.warn('App is running in an iframe. Browser notifications may be blocked by security policies. Consider opening the app in a new tab for testing.');
+    }
+
+    if (Notification.permission === 'denied') {
+      console.error('Notification permission already denied. User must reset preferences in browser settings.');
+      return false;
+    }
     
     if (Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
-      this.hasPermission = permission === 'granted';
-      return this.hasPermission;
+      try {
+        console.log('Requesting notification permission via user gesture...');
+        // Standard Promise-based API
+        const permission = await Notification.requestPermission();
+        console.log('Permission result:', permission);
+        this.hasPermission = permission === 'granted';
+        return this.hasPermission;
+      } catch (error) {
+        console.error('Error requesting notification permission:', error);
+        return false;
+      }
     }
     
     this.hasPermission = Notification.permission === 'granted';
     return this.hasPermission;
   }
 
+  public getPermissionStatus(): 'unsupported' | 'granted' | 'denied' | 'default' {
+    if (!('Notification' in window)) return 'unsupported';
+    return Notification.permission as any;
+  }
+
   public async notify(options: NotificationOptions) {
-    if (!this.hasPermission) {
-      const granted = await this.requestPermission();
-      if (!granted) return;
+    if (!('Notification' in window)) return;
+
+    // Standard check before sending
+    if (Notification.permission !== 'granted') {
+      // Force request if it hasn't been denied yet
+      if (Notification.permission === 'default') {
+        const granted = await this.requestPermission();
+        if (!granted) return;
+      } else {
+        console.warn('Notification permission is denied. Cannot send notification.');
+        return;
+      }
     }
 
     try {
-      // In mobile/standalone mode, service worker registration is preferred
-      const registration = await navigator.serviceWorker.getRegistration();
+      console.log('Attempting to deliver notification:', options.title);
+      
+      // In mobile/standalone mode, service worker registration is preferred for reliability
+      let registration = null;
+      if ('serviceWorker' in navigator) {
+        try {
+          registration = await navigator.serviceWorker.getRegistration();
+        } catch (swError) {
+          console.warn('Could not retrieve service worker registration:', swError);
+        }
+      }
+
+      const notificationOptions = {
+        body: options.body,
+        icon: options.icon || '/favicon.ico',
+        tag: options.tag,
+        badge: '/favicon.ico',
+        vibrate: [200, 100, 200],
+        requireInteraction: false // Set to true if you want the notification to stay until user clicks
+      };
+
       if (registration && 'showNotification' in registration) {
-        registration.showNotification(options.title, {
-          body: options.body,
-          icon: options.icon || '/favicon.ico',
-          tag: options.tag,
-        });
+        await registration.showNotification(options.title, notificationOptions);
       } else {
-        new Notification(options.title, {
-          body: options.body,
-          icon: options.icon || '/favicon.ico',
-          tag: options.tag,
-        });
+        new Notification(options.title, notificationOptions);
       }
     } catch (error) {
       console.error('Error showing notification:', error);
+      // Fallback for debugging in restricted environments
+      if (window.self !== window.top) {
+        console.info('NOTIFICATION FALLBACK (Iframe):', options.title, options.body);
+      }
     }
   }
 
