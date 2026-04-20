@@ -182,6 +182,7 @@ const Scanner: React.FC = () => {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode.trim()) return;
+    setError(null);
     await handleDetected(manualCode.trim());
   };
 
@@ -210,7 +211,7 @@ const Scanner: React.FC = () => {
       {/* Tab Switcher */}
       <div className="flex gap-1 rounded-[20px] bg-slate-100 p-1 shrink-0">
         <button 
-          onClick={() => { setActiveTab('scan'); setScanResult(null); }}
+          onClick={() => { setActiveTab('scan'); setScanResult(null); setError(null); }}
           className={cn(
             "flex flex-1 items-center justify-center gap-2 rounded-[16px] py-2.5 text-[10px] font-black uppercase tracking-widest transition-all",
             activeTab === 'scan' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
@@ -219,7 +220,7 @@ const Scanner: React.FC = () => {
           <Camera className="h-3.5 w-3.5" /> Scan Code
         </button>
         <button 
-          onClick={() => { setActiveTab('manual'); setScanResult(null); }}
+          onClick={() => { setActiveTab('manual'); setScanResult(null); setError(null); }}
           className={cn(
             "flex flex-1 items-center justify-center gap-2 rounded-[16px] py-2.5 text-[10px] font-black uppercase tracking-widest transition-all",
             activeTab === 'manual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
@@ -296,18 +297,41 @@ const Scanner: React.FC = () => {
                         <h3 className="text-lg font-black tracking-tight text-slate-900 leading-none">Manual Entry</h3>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Transmit serial code</p>
                      </div>
-                     <div className="w-full space-y-2.5">
-                        <input 
-                          type="text"
-                          placeholder="ENTER SERIAL NUMBER"
-                          value={manualCode}
-                          onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-                          className="w-full rounded-[20px] bg-slate-50 border-2 border-slate-50 px-5 py-4 text-xs font-black tracking-widest text-slate-900 focus:border-slate-900 focus:bg-white focus:outline-none transition-all placeholder:text-slate-300"
-                        />
+                     <div className="w-full space-y-3">
+                        <div className="relative group">
+                          <input 
+                            type="text"
+                            placeholder="SN-XXXX-XXXX"
+                            value={manualCode}
+                            onChange={(e) => {
+                              setManualCode(e.target.value.toUpperCase());
+                              if (error) setError(null);
+                            }}
+                            className={cn(
+                              "w-full rounded-[18px] bg-slate-50 border-2 px-5 py-3.5 text-sm font-bold font-mono tracking-widest text-slate-900 placeholder:text-slate-400/40 focus:bg-white focus:outline-none transition-all",
+                              error ? "border-red-500 bg-red-50/10 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-slate-100 focus:border-slate-900 shadow-none"
+                            ) }
+                          />
+                        </div>
+
+                        <AnimatePresence>
+                          {error && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="flex items-center justify-center gap-2 px-2"
+                            >
+                               <AlertCircle className="h-3 w-3 text-red-500" />
+                               <span className="text-[10px] font-black uppercase tracking-tight text-red-500">Unrecognized Device ID</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                         <button 
                           type="submit"
                           disabled={!manualCode.trim()}
-                          className="flex h-14 w-full items-center justify-center gap-2 rounded-[20px] bg-slate-900 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-30 shadow-lg shadow-slate-950/20"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-slate-900 text-[10px] font-black uppercase tracking-[0.15em] text-white transition-all active:scale-95 disabled:opacity-30 shadow-xl shadow-slate-900/10"
                         >
                           Verify Hardware <ArrowRight className="h-4 w-4" />
                         </button>
@@ -386,11 +410,13 @@ const Scanner: React.FC = () => {
                     <button 
                       onClick={handleRegister}
                       disabled={registering}
-                      className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-slate-900 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-950/20"
+                      className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-slate-900 text-[10px] font-black uppercase tracking-[0.15em] text-white transition-all active:scale-95 disabled:opacity-50 shadow-xl shadow-slate-950/20"
                     >
                       {registering ? (
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      ) : "Commit Registration"}
+                      ) : (
+                        <>Commit Registration <ArrowRight className="h-4 w-4" /></>
+                      )}
                     </button>
                   </div>
                 </div>

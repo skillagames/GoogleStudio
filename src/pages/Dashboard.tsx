@@ -294,7 +294,7 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
           <span className={cn(
              isExpired ? "text-red-500" : isInactive ? "text-slate-400" : "text-emerald-500"
           )}>
-            {isExpired ? 'Expired' : isInactive ? 'Not Active' : 'Active'}
+            {isExpired ? 'Expired' : isInactive ? 'Inactive' : 'Active'}
           </span>
         </div>
       </div >

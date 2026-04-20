@@ -99,7 +99,7 @@ const Devices: React.FC = () => {
                           : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600"
                       )}
                     >
-                      {status === 'inactive' ? 'Not Active' : status}
+                      {status === 'inactive' ? 'Inactive' : status}
                     </button>
                   ))}
                 </div>
@@ -162,7 +162,7 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
           <span className={cn(
             isExpired ? "text-red-500" : isInactive ? "text-slate-400" : "text-emerald-500"
           )}>
-            {isExpired ? 'Expired' : isInactive ? 'Not Active' : 'Active'}
+            {isExpired ? 'Expired' : isInactive ? 'Inactive' : 'Active'}
           </span>
         </div>
       </div >
