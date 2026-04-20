@@ -68,7 +68,7 @@ const Dashboard: React.FC = () => {
           className="relative flex flex-col items-center text-center space-y-4"
         >
           <div className="space-y-0.5">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Node Cluster Control</span>
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Device Cluster Control</span>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 leading-none">
               Hello, <span className="text-primary">{firstName}</span>
             </h1>
@@ -140,7 +140,7 @@ const Dashboard: React.FC = () => {
                </button>
             )}
           </div>
-          <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight">{filteredDevices.length} NODE(S)</span>
+          <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight">{filteredDevices.length} DEVICE(S)</span>
         </div>
         
         <div className="grid gap-3">
@@ -160,7 +160,7 @@ const Dashboard: React.FC = () => {
               <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-white border border-slate-100 text-slate-200 shadow-sm">
                 <Smartphone className="h-8 w-8" />
               </div>
-              <p className="text-xs font-bold text-slate-400">{filter ? `No ${filter} nodes found` : 'No nodes provisioned'}</p>
+              <p className="text-xs font-bold text-slate-400">{filter ? `No ${filter} devices found` : 'No devices provisioned'}</p>
               {!filter && (
                 <button 
                   onClick={async () => {
@@ -212,7 +212,7 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-3">
                        <div>
                           <h4 className="text-xs font-black text-slate-900 uppercase">Operational Status</h4>
-                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Your cluster is currently performing at optimized capacity with {devices.filter(d => d.subscriptionStatus === 'active').length} active nodes.</p>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Your cluster is currently performing at optimized capacity with {devices.filter(d => d.subscriptionStatus === 'active').length} active devices.</p>
                        </div>
                        <div className="flex gap-4">
                           <div className="space-y-0.5">
@@ -236,7 +236,7 @@ const Dashboard: React.FC = () => {
                  </div>
                  
                  <div className="space-y-4">
-                    <LogItem icon={Zap} title="Telemetry Pulse" desc="Node Pro Route X1 transmitted usage metrics" time="2m ago" color="blue" />
+                    <LogItem icon={Zap} title="Telemetry Pulse" desc="Device Pro Route X1 transmitted usage metrics" time="2m ago" color="blue" />
                     <LogItem icon={ShieldCheck} title="Service Renewal" desc="Field Monitor M1 subscription auto-renewed" time="1h ago" color="emerald" />
                     <LogItem icon={AlertCircle} title="Low Signal" desc="Enterprise Hub G5 reporting intermittent latency" time="3h ago" color="orange" />
                  </div>

@@ -148,14 +148,14 @@ const DeviceDetails: React.FC = () => {
                   {isInactive ? 'Connectivity' : 'Expires'}
                 </p>
                 <p className="text-lg font-bold text-slate-900">
-                  {isInactive ? 'Awaiting Provision' : formatDate(device.expirationDate, 'MMM dd, yyyy')}
+                  {isInactive ? 'Pending' : formatDate(device.expirationDate, 'MMM dd, yyyy')}
                 </p>
              </div>
              {(isExpired || isInactive) && (
                 <button 
                   onClick={() => setShowRenewModal(true)}
                   className={cn(
-                    "flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-bold text-white transition-transform active:scale-95 shadow-lg",
+                    "flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-bold text-white transition-transform active:scale-95 shadow-lg whitespace-nowrap",
                     isInactive ? "bg-slate-900 shadow-slate-900/20" : "bg-orange-500 shadow-orange-500/20"
                   )}
                 >
@@ -257,7 +257,7 @@ const DeviceDetails: React.FC = () => {
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50/30 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-red-500 transition-all active:scale-[0.98] hover:bg-red-50"
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Decommission Node
+          Decommission Device
         </button>
       </section>
 
@@ -283,7 +283,7 @@ const DeviceDetails: React.FC = () => {
                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 mb-3">
                     <CreditCard className="h-5 w-5" />
                  </div>
-                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Reactivate Node</h2>
+                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Reactivate Device</h2>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select connectivity payload</p>
                  
                  <div className="mt-4 w-full space-y-1.5">
@@ -347,7 +347,7 @@ const DeviceDetails: React.FC = () => {
                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-500 mb-3">
                     <AlertCircle className="h-5 w-5" />
                  </div>
-                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Decommission Node?</h2>
+                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Decommission Device?</h2>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 px-4 leading-relaxed">
                    This will permanently purge all telemetry and historical usage data.
                  </p>
@@ -361,7 +361,7 @@ const DeviceDetails: React.FC = () => {
                      {isDeleting ? (
                        <RefreshCcw className="h-4 w-4 animate-spin" />
                      ) : (
-                       <>Purge Node</>
+                       <>Purge Device</>
                      )}
                    </button>
                    <button 

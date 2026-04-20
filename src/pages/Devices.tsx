@@ -54,7 +54,7 @@ const Devices: React.FC = () => {
         <header className="space-y-4 px-1">
           <div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Device Inventory</h1>
-            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Infrastructure: {devices.length} Nodes</p>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Infrastructure: {devices.length} Devices</p>
           </div>
 
           <div className="flex gap-2">
