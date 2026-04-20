@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-5 pb-10">
       {/* Hero Welcome Section - Compact & Centralized */}
-      <section className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white px-5 py-4 shadow-sm">
+      <section className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm">
         <motion.div
           initial={{ opacity: 0, y: 5 }}
           animate={{ opacity: 1, y: 0 }}
@@ -128,7 +128,7 @@ const Dashboard: React.FC = () => {
 
       {/* Device List Header & Natural List */}
       <section>
-        <div className="flex items-center justify-between px-2 pb-4">
+        <div className="flex items-center justify-between pb-4">
           <div className="flex items-center gap-2">
             <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Quick Inventory</h2>
             {filter && (
@@ -187,7 +187,7 @@ const Dashboard: React.FC = () => {
       {/* Cluster Insights Section */}
       {profile?.showInsights !== false && (
         <section className="space-y-4 pt-2">
-           <div className="flex items-center justify-between px-2">
+           <div className="flex items-center justify-between mb-2">
               <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cluster Insights</h2>
               <div className="flex h-1 w-12 rounded-full bg-slate-100 overflow-hidden">
                 <div className="h-full bg-primary w-2/3" />
