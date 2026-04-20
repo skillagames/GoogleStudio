@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
+import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
 import { deviceService } from '../services/deviceService';
+import { notificationService } from '../services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import { doc, updateDoc } from 'firebase/firestore';
 
@@ -90,6 +91,14 @@ const Profile: React.FC = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleTestNotification = async () => {
+    await notificationService.notify({
+      title: 'Operational Transmission Test',
+      body: 'Protocol verification complete. Push notification pipeline is active.',
+      tag: 'test-notification'
+    });
   };
 
   if (!profile) return null;
@@ -192,7 +201,7 @@ const Profile: React.FC = () => {
                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                  </button>
 
-                 <button 
+                  <button 
                     onClick={toggleInsights}
                     className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
@@ -205,7 +214,20 @@ const Profile: React.FC = () => {
                     <div className={cn("h-1.5 w-1.5 rounded-full", profile?.showInsights === false ? "bg-slate-600" : "bg-emerald-400")} />
                   </button>
 
-                 <button 
+                  <button 
+                    onClick={handleTestNotification}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bell className="h-3.5 w-3.5 text-blue-400" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                        Test Push Pipeline
+                      </span>
+                    </div>
+                    <RefreshCw className="h-3 w-3 text-slate-600" />
+                  </button>
+
+                  <button 
                     onClick={() => setShowConfirmDelete(true)}
                     disabled={loading || isDeleting}
                     className="mt-1 flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-white/40 hover:text-red-400 transition-all active:scale-95 disabled:opacity-50"
