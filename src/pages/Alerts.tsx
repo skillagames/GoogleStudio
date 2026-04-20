@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, AlertTriangle, Clock, ChevronRight, RefreshCcw } from 'lucide-react';
+import { 
+  Bell, 
+  AlertTriangle, 
+  Clock, 
+  ChevronRight, 
+  RefreshCcw,
+  Trash2,
+  X
+} from 'lucide-react';
 import { notificationService } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatDate } from '../lib/utils';
 
 const Alerts: React.FC = () => {
@@ -25,6 +33,16 @@ const Alerts: React.FC = () => {
     setLoading(false);
   };
 
+  const handleDismiss = async (alertId: string) => {
+    notificationService.dismissAlert(alertId);
+    setAlerts(prev => prev.filter(a => a.id !== alertId));
+  };
+
+  const handleRescan = async () => {
+    notificationService.resetAlerts();
+    await loadAlerts();
+  };
+
   if (loading) return (
     <div className="flex h-64 items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-black border-t-transparent"></div>
@@ -32,61 +50,106 @@ const Alerts: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-32">
       <header>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Security Alerts</h1>
         <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Critical Connectivity Status</p>
       </header>
 
-      <div className="grid gap-3">
-        {alerts.length > 0 ? (
-          alerts.map((alert, idx) => (
-            <motion.button
-              key={alert.deviceId + alert.type}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              onClick={() => navigate(`/devices/${alert.deviceId}`)}
-              className={cn(
-                "group relative flex w-full items-center gap-4 overflow-hidden rounded-[24px] bg-white p-4 border transition-all active:scale-[0.98] shadow-sm text-left",
-                alert.type === 'expired' ? "border-red-100" : alert.type === 'inactive' ? "border-slate-100" : "border-orange-100"
-              )}
-            >
-              <div className={cn(
-                "flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]",
-                alert.type === 'expired' ? "bg-red-50 text-red-500" : alert.type === 'inactive' ? "bg-slate-50 text-slate-400" : "bg-orange-50 text-orange-500"
-              )}>
-                {alert.type === 'expired' ? <AlertTriangle className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-black tracking-tight text-slate-900">{alert.deviceName}</h4>
-                  <span className="text-[8px] font-black uppercase text-slate-400">
-                    {alert.type === 'expired' ? 'CRITICAL' : alert.type === 'inactive' ? 'PENDING' : 'WARNING'}
-                  </span>
+      <div className="grid gap-3 p-1 -m-1">
+        <AnimatePresence mode="popLayout">
+          {alerts.length > 0 ? (
+            alerts.map((alert) => (
+              <motion.div
+                key={alert.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, x: 20, scale: 0.9, filter: 'blur(10px)' }}
+                className="relative"
+              >
+                {/* Background Layer (Revealed during swipe) */}
+                <div className="absolute inset-0 flex items-center justify-start rounded-[24px] bg-red-500 px-6">
+                  <div className="flex flex-col items-center gap-1 text-white">
+                    <Trash2 className="h-5 w-5" />
+                    <span className="text-[8px] font-black uppercase tracking-tighter">Dismiss</span>
+                  </div>
                 </div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight mt-0.5">{alert.message}</p>
-                <p className="text-[9px] font-medium text-slate-400 mt-1 italic">
-                  {alert.type === 'expired' ? 'Expired on ' : alert.type === 'inactive' ? 'Waiting for provision since ' : 'Expiring on '}
-                  {alert.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-              </div>
 
-              <ChevronRight className="h-4 w-4 text-slate-300" />
-            </motion.button>
-          ))
-        ) : (
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ right: 0, left: 0 }}
+                  dragElastic={0.7}
+                  dragSnapToOrigin={true}
+                  dragTransition={{ bounceStiffness: 600, bounceDamping: 40 }}
+                  onDragEnd={(e, info) => {
+                    const target = e.target as HTMLElement;
+                    const card = target.closest('.rounded-\\[24px\\]') as HTMLElement;
+                    const width = card?.offsetWidth || 300;
+                    
+                    // Requirement: at least 1/3 of the total width
+                    const threshold = width / 3;
+                    
+                    if (info.offset.x > threshold) {
+                      handleDismiss(alert.id);
+                    }
+                  }}
+                  className={cn(
+                    "group relative flex w-full items-center gap-4 overflow-hidden rounded-[24px] bg-white p-4 border transition-shadow shadow-sm text-left touch-none",
+                    alert.type === 'expired' ? "border-red-100" : alert.type === 'inactive' ? "border-slate-100" : "border-orange-100"
+                  )}
+                >
+                  <div 
+                    onClick={() => navigate(`/devices/${alert.deviceId}`)}
+                    className="flex flex-1 items-center gap-4 cursor-pointer"
+                  >
+                    <div className={cn(
+                      "flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px]",
+                      alert.type === 'expired' ? "bg-red-50 text-red-500" : alert.type === 'inactive' ? "bg-slate-50 text-slate-400" : "bg-orange-50 text-orange-500"
+                    )}>
+                      {alert.type === 'expired' ? <AlertTriangle className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-black tracking-tight text-slate-900">{alert.deviceName}</h4>
+                        <span className="text-[8px] font-black uppercase text-slate-400">
+                          {alert.type === 'expired' ? 'CRITICAL' : alert.type === 'inactive' ? 'PENDING' : 'WARNING'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight mt-0.5">{alert.message}</p>
+                      <p className="text-[9px] font-medium text-slate-400 mt-1 italic">
+                        {alert.type === 'expired' ? 'Expired on ' : alert.type === 'inactive' ? 'Waiting for provision since ' : 'Expiring on '}
+                        {alert.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={() => handleDismiss(alert.id)}
+                      className="rounded-full bg-slate-50 p-1.5 text-slate-300 hover:bg-red-50 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <ChevronRight className="h-4 w-4 text-slate-200" />
+                  </div>
+                </motion.div>
+              </motion.div>
+            ))
+          ) : (
           <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-[32px] bg-slate-50 text-slate-200 border border-slate-100 shadow-inner">
               <Bell className="h-10 w-10" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-black text-slate-900 uppercase">Clear Horizon</p>
-              <p className="text-[10px] text-slate-400 font-medium max-w-[200px]">All cluster peripherals are currently operating within valid subscription parameters.</p>
+              <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Queue Inhibited</p>
+              <p className="text-[10px] text-slate-400 font-medium max-w-[200px] leading-relaxed">
+                Active notification buffer is currently empty. Dismissed event logs are cached until the next manual protocol re-scan.
+              </p>
             </div>
             <button 
-              onClick={loadAlerts}
+              onClick={handleRescan}
               className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-80"
             >
               <RefreshCcw className="h-3 w-3" />
@@ -94,11 +157,12 @@ const Alerts: React.FC = () => {
             </button>
           </div>
         )}
+        </AnimatePresence>
       </div>
 
       {/* Quick Actions if there are alerts */}
       {alerts.length > 0 && (
-        <div className="rounded-[28px] bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/20">
+        <div className="mt-10 rounded-[28px] bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/20">
            <h3 className="text-xs font-black uppercase tracking-widest leading-none mb-2">Protocol Suggestion</h3>
            <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-4">
              Detected {alerts.length} device(s) requiring immediate attention. Tap on an alert to initiate the renewal protocol and restore full telemetry sync.

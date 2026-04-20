@@ -93,6 +93,8 @@ const Profile: React.FC = () => {
     }
   };
 
+  const [notifSuccess, setNotifSuccess] = useState(false);
+
   const handleTestNotification = async () => {
     if (!user) return;
     const alerts = await notificationService.getAlerts(user.uid);
@@ -103,6 +105,9 @@ const Profile: React.FC = () => {
       body: `You have (${expiredCount}) expired devices that require attention.`,
       tag: 'test-notification'
     });
+    
+    setNotifSuccess(true);
+    setTimeout(() => setNotifSuccess(false), 2000);
   };
 
   if (!profile) return null;
@@ -223,17 +228,21 @@ const Profile: React.FC = () => {
                     className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
                     <div className="flex items-center gap-3">
-                      <Bell className={cn("h-3.5 w-3.5", notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400' : 'text-blue-400')} />
+                      <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : 'text-blue-400')} />
                       <div className="text-left">
                         <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
-                          Test Push Pipeline
+                          {notifSuccess ? 'Signal Transmitted' : 'Test Push Pipeline'}
                         </span>
                         <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
                           Status: {notificationService.getPermissionStatus()}
                         </span>
                       </div>
                     </div>
-                    <RefreshCw className="h-3 w-3 text-slate-600" />
+                    {notifSuccess ? (
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3 text-slate-600" />
+                    )}
                   </button>
 
                   {notificationService.getPermissionStatus() === 'denied' && (

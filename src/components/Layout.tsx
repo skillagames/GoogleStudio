@@ -34,11 +34,22 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
         const alerts = await notificationService.getAlerts(user.uid);
         setAlertCount(alerts.length);
       };
+
       checkAlerts();
       
-      // Update count periodically if on dashboard or alerts page
-      const interval = setInterval(checkAlerts, 60000); // Check every minute
-      return () => clearInterval(interval);
+      // Listen for manual dismissals from within the app
+      window.addEventListener('alerts_updated', checkAlerts);
+      // Listen for dismissals/updates from other tabs
+      window.addEventListener('storage', checkAlerts);
+
+      // Periodic fallback check
+      const interval = setInterval(checkAlerts, 60000);
+
+      return () => {
+        window.removeEventListener('alerts_updated', checkAlerts);
+        window.removeEventListener('storage', checkAlerts);
+        clearInterval(interval);
+      };
     }
   }, [user]);
 

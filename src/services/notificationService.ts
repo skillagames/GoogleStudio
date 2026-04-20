@@ -8,6 +8,9 @@ export interface NotificationOptions {
   tag?: string;
 }
 
+// Custom SVG Data URL matching the app's "IoT" logo (Black rounded square with white bold text)
+const APP_ICON_URL = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSI4MCIgZmlsbD0iYmxhY2siLz48dGV4dCB4PSIyNTYiIHk9IjI3NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSIyNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Jb1Q8L3RleHQ+PC9zdmc+`;
+
 class NotificationService {
   private hasPermission: boolean = false;
 
@@ -64,53 +67,72 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
-    if (!('Notification' in window)) return;
+    if (!('Notification' in window)) {
+      console.error('Notification API not found in this browser.');
+      return;
+    }
 
     // Standard check before sending
     if (Notification.permission !== 'granted') {
-      // Force request if it hasn't been denied yet
+      console.warn('Notification permission state:', Notification.permission);
       if (Notification.permission === 'default') {
         const granted = await this.requestPermission();
         if (!granted) return;
       } else {
-        console.warn('Notification permission is denied. Cannot send notification.');
         return;
       }
     }
 
     try {
-      console.log('Attempting to deliver notification:', options.title);
+      console.log('--- NOTIFICATION DEBUG ---');
+      console.log('Title:', options.title);
+      console.log('Body:', options.body);
       
-      // In mobile/standalone mode, service worker registration is preferred for reliability
-      let registration = null;
+      const notificationOptions: NotificationOptions & any = {
+        body: options.body,
+        icon: options.icon || APP_ICON_URL,
+        tag: options.tag || 'iot-connect-default',
+        badge: APP_ICON_URL,
+        vibrate: [200, 100, 200],
+        silent: false,
+        renotify: true,
+        requireInteraction: true 
+      };
+
+      // Try Service Worker registration first (more reliable on mobile/standalone)
+      let swSuccess = false;
       if ('serviceWorker' in navigator) {
         try {
-          registration = await navigator.serviceWorker.getRegistration();
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && 'showNotification' in registration) {
+            console.log('Attempting delivery via ServiceWorkerRegistration...');
+            await registration.showNotification(options.title, notificationOptions);
+            swSuccess = true;
+            console.log('SW Notification sent.');
+          }
         } catch (swError) {
-          console.warn('Could not retrieve service worker registration:', swError);
+          console.warn('SW notification failed, falling back:', swError);
         }
       }
 
-      const notificationOptions = {
-        body: options.body,
-        icon: options.icon || '/favicon.ico',
-        tag: options.tag,
-        badge: '/favicon.ico',
-        vibrate: [200, 100, 200],
-        requireInteraction: false // Set to true if you want the notification to stay until user clicks
-      };
+      // If SW failed or wasn't available, use the standard constructor
+      if (!swSuccess) {
+        console.log('Attempting delivery via new Notification() constructor...');
+        const n = new Notification(options.title, notificationOptions);
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+        console.log('Constructor Notification instance created.');
+      }
+      
+      // Also trigger haptic feedback if available (for mobile web)
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
 
-      if (registration && 'showNotification' in registration) {
-        await registration.showNotification(options.title, notificationOptions);
-      } else {
-        new Notification(options.title, notificationOptions);
-      }
     } catch (error) {
-      console.error('Error showing notification:', error);
-      // Fallback for debugging in restricted environments
-      if (window.self !== window.top) {
-        console.info('NOTIFICATION FALLBACK (Iframe):', options.title, options.body);
-      }
+      console.error('CRITICAL NOTIFICATION FAILURE:', error);
     }
   }
 
@@ -146,6 +168,30 @@ class NotificationService {
     }
   }
 
+  public dismissAlert(alertId: string) {
+    const dismissed = this.getDismissedAlerts();
+    if (!dismissed.includes(alertId)) {
+      dismissed.push(alertId);
+      localStorage.setItem('dismissed_alerts', JSON.stringify(dismissed));
+      // Notify other parts of the app that alerts have changed
+      window.dispatchEvent(new CustomEvent('alerts_updated'));
+    }
+  }
+
+  public resetAlerts() {
+    localStorage.removeItem('dismissed_alerts');
+    window.dispatchEvent(new CustomEvent('alerts_updated'));
+  }
+
+  private getDismissedAlerts(): string[] {
+    try {
+      const data = localStorage.getItem('dismissed_alerts');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  }
+
   public async getAlerts(userId: string) {
     if (!userId) return [];
 
@@ -158,18 +204,24 @@ class NotificationService {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(now.getDate() + 3);
 
+      const dismissed = this.getDismissedAlerts();
       const alerts: any[] = [];
 
       querySnapshot.forEach((doc) => {
         const device = { id: doc.id, ...doc.data() } as any;
+        const alertId = `${doc.id}-${device.subscriptionStatus === 'inactive' ? 'inactive' : 'expired'}`;
+        
+        // Skip if this specific type of alert for this device is dismissed
+        if (dismissed.includes(alertId)) return;
         
         // Handle Inactive devices first
         if (device.subscriptionStatus === 'inactive') {
           alerts.push({
+            id: alertId,
             type: 'inactive',
             deviceId: doc.id,
             deviceName: device.name,
-            date: new Date(device.lastUpdated?.seconds * 1000 || Date.now()), // Use last updated as fallback for sorting
+            date: new Date(device.lastUpdated?.seconds * 1000 || Date.now()),
             message: 'Needs active subscription'
           });
           return;
@@ -188,6 +240,7 @@ class NotificationService {
 
         if (expirationDate < now) {
           alerts.push({
+            id: alertId,
             type: 'expired',
             deviceId: doc.id,
             deviceName: device.name,
@@ -196,6 +249,7 @@ class NotificationService {
           });
         } else if (expirationDate < threeDaysFromNow) {
           alerts.push({
+            id: `${doc.id}-expiring`,
             type: 'expiring',
             deviceId: doc.id,
             deviceName: device.name,
