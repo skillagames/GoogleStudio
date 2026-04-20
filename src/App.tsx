@@ -10,6 +10,7 @@ import DeviceDetails from './pages/DeviceDetails';
 import Scanner from './pages/Scanner';
 import Admin from './pages/Admin';
 import Profile from './pages/Profile';
+import Alerts from './pages/Alerts';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Protected Route Component
@@ -139,6 +140,16 @@ export default function App() {
                 <Layout>
                   <PageTransition>
                     <Profile />
+                  </PageTransition>
+                </Layout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/alerts" element={
+              <ProtectedRoute>
+                <Layout>
+                  <PageTransition>
+                    <Alerts />
                   </PageTransition>
                 </Layout>
               </ProtectedRoute>

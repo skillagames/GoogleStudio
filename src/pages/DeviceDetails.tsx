@@ -42,10 +42,10 @@ const DeviceDetails: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState(0);
 
   const PLANS = [
-    { id: 0, name: "Starter Pulse", price: "$4.99", desc: "Basic connectivity for 30 days" },
-    { id: 1, name: "Monthly Booster", price: "$9.99", desc: "Unlimited data for 30 days" },
-    { id: 2, name: "Quarterly Core", price: "$24.99", desc: "Solid performance for 90 days" },
-    { id: 3, name: "Annual Pro", price: "$89.99", desc: "Best value for power users" }
+    { id: 0, name: "Starter Pulse", price: "R 79.00", desc: "Basic connectivity for 30 days" },
+    { id: 1, name: "Monthly Booster", price: "R 159.00", desc: "Unlimited data for 30 days" },
+    { id: 2, name: "Quarterly Core", price: "R 399.00", desc: "Solid performance for 90 days" },
+    { id: 3, name: "Annual Pro", price: "R 1,299.00", desc: "Best value for power users" }
   ];
 
   useEffect(() => {

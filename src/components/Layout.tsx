@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Plus, 
   User as UserIcon, 
+  Bell,
   Settings, 
   ChevronLeft, 
   LayoutDashboard,
@@ -14,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { notificationService } from '../services/notificationService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -23,7 +25,22 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const [alertCount, setAlertCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      const checkAlerts = async () => {
+        const alerts = await notificationService.getAlerts(user.uid);
+        setAlertCount(alerts.length);
+      };
+      checkAlerts();
+      
+      // Update count periodically if on dashboard or alerts page
+      const interval = setInterval(checkAlerts, 60000); // Check every minute
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Toggle for easy undo if requested
   const ENABLE_LOGO_ANIMATION = true;
@@ -31,6 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: Plus, label: 'Scan', path: '/scan' },
+    { icon: Bell, label: 'Alerts', path: '/alerts' },
     { icon: UserIcon, label: 'Profile', path: '/profile' },
   ];
 
@@ -112,11 +130,17 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
               key={item.path}
               onClick={() => navigate(item.path)}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 transition-colors",
+                "flex flex-col items-center gap-1 p-2 transition-colors relative",
                 location.pathname === item.path ? "text-primary" : "text-slate-400"
               )}
             >
               <item.icon className="h-6 w-6" />
+              {item.label === 'Alerts' && alertCount > 0 && (
+                <span className="absolute right-3.5 top-2 flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                </span>
+              )}
               <span className="text-[10px] uppercase tracking-widest font-bold">{item.label}</span>
             </button>
           ))}

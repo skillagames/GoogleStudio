@@ -67,6 +67,38 @@ class NotificationService {
     if (!userId) return;
 
     try {
+      const alerts = await this.getAlerts(userId);
+
+      alerts.forEach(alert => {
+        if (alert.type === 'inactive') {
+          this.notify({
+            title: 'Provisioning Required',
+            body: `Device "${alert.deviceName}" needs an active subscription to start transmitting data.`,
+            tag: `inactive-${alert.deviceId}`
+          });
+        } else if (alert.type === 'expired') {
+          this.notify({
+            title: 'Device Expired',
+            body: `Your device "${alert.deviceName}" has expired. Please renew your subscription.`,
+            tag: `expired-${alert.deviceId}`
+          });
+        } else if (alert.type === 'expiring') {
+          this.notify({
+            title: 'Subscription Expiring Soon',
+            body: `Your device "${alert.deviceName}" will expire on ${alert.date.toLocaleDateString()}.`,
+            tag: `expiring-${alert.deviceId}`
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error checking device expirations:', error);
+    }
+  }
+
+  public async getAlerts(userId: string) {
+    if (!userId) return [];
+
+    try {
       const devicesRef = collection(db, 'devices');
       const q = query(devicesRef, where('ownerId', '==', userId));
       const querySnapshot = await getDocs(q);
@@ -75,9 +107,25 @@ class NotificationService {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(now.getDate() + 3);
 
+      const alerts: any[] = [];
+
       querySnapshot.forEach((doc) => {
-        const device = doc.data();
+        const device = { id: doc.id, ...doc.data() } as any;
+        
+        // Handle Inactive devices first
+        if (device.subscriptionStatus === 'inactive') {
+          alerts.push({
+            type: 'inactive',
+            deviceId: doc.id,
+            deviceName: device.name,
+            date: new Date(device.lastUpdated?.seconds * 1000 || Date.now()), // Use last updated as fallback for sorting
+            message: 'Needs active subscription'
+          });
+          return;
+        }
+
         let expirationDate: Date;
+        if (!device.expirationDate) return;
 
         if (device.expirationDate?.toDate) {
           expirationDate = device.expirationDate.toDate();
@@ -86,27 +134,30 @@ class NotificationService {
         } else {
           expirationDate = new Date(device.expirationDate);
         }
-        
+
         if (expirationDate < now) {
-          if (device.subscriptionStatus !== 'expired') {
-            // This should probably be handled by a cloud function to sync status,
-            // but we can at least notify the user here.
-            this.notify({
-              title: 'Device Expired',
-              body: `Your device "${device.name}" has expired. Please renew your subscription.`,
-              tag: `expired-${doc.id}`
-            });
-          }
+          alerts.push({
+            type: 'expired',
+            deviceId: doc.id,
+            deviceName: device.name,
+            date: expirationDate,
+            message: 'Subscription has expired'
+          });
         } else if (expirationDate < threeDaysFromNow) {
-          this.notify({
-            title: 'Subscription Expiring Soon',
-            body: `Your device "${device.name}" will expire on ${expirationDate.toLocaleDateString()}.`,
-            tag: `expiring-${doc.id}`
+          alerts.push({
+            type: 'expiring',
+            deviceId: doc.id,
+            deviceName: device.name,
+            date: expirationDate,
+            message: 'Subscription expiring soon'
           });
         }
       });
+
+      return alerts.sort((a, b) => a.date.getTime() - b.date.getTime());
     } catch (error) {
-      console.error('Error checking device expirations:', error);
+      console.error('Error getting alerts:', error);
+      return [];
     }
   }
 }
