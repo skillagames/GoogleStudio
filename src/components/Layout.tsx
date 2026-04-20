@@ -85,14 +85,6 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
               >
                 Connect
               </motion.span>
-              <motion.span 
-                initial={ENABLE_LOGO_ANIMATION ? { opacity: 0 } : {}}
-                animate={ENABLE_LOGO_ANIMATION ? { opacity: 1 } : {}}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                className="text-[6px] uppercase tracking-[0.1em] font-bold text-slate-400"
-              >
-                global | iot | connectivity
-              </motion.span>
             </div>
           </div>
           
