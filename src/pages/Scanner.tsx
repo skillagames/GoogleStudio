@@ -15,12 +15,42 @@ const Scanner: React.FC = () => {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [permissionState, setPermissionState] = useState<PermissionState | 'unknown'>('unknown');
   
   const { user } = useAuth();
   const navigate = useNavigate();
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isTransitioningRef = useRef(false);
   const scannerId = "reader";
+
+  const checkPermissions = async () => {
+    try {
+      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      setPermissionState(result.state);
+      
+      result.onchange = () => {
+        setPermissionState(result.state);
+      };
+      
+      return result.state;
+    } catch (err) {
+      console.warn("Permissions API not supported or failed", err);
+      return 'unknown';
+    }
+  };
+
+  const requestPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach(track => track.stop()); // Stop immediately
+      setPermissionState('granted');
+      return true;
+    } catch (err) {
+      console.error("Permission request denied", err);
+      setPermissionState('denied');
+      return false;
+    }
+  };
 
   const startScanner = async () => {
     if (isTransitioningRef.current) return;
@@ -30,6 +60,21 @@ const Scanner: React.FC = () => {
     if (!readerElement) {
       console.warn("Scanner element not found in DOM yet.");
       return;
+    }
+
+    // Proactively check/request permissions
+    const currentState = await checkPermissions();
+    if (currentState === 'denied') {
+      setError("Camera access is required. Please enable it in your browser settings.");
+      return;
+    }
+    
+    if (currentState === 'prompt' || currentState === 'unknown') {
+      const granted = await requestPermission();
+      if (!granted) {
+        setError("Camera permission denied. Access is required for scanning.");
+        return;
+      }
     }
 
     try {
@@ -193,14 +238,32 @@ const Scanner: React.FC = () => {
 
                    {error && (
                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white px-10 text-center">
-                        <AlertCircle className="h-10 w-10 text-red-400" />
-                        <span className="text-xs font-bold text-slate-900">{error}</span>
-                        <button 
-                          onClick={() => setActiveTab('manual')}
-                          className="mt-2 text-[10px] font-black uppercase tracking-widest text-primary underline"
-                        >
-                          Switch to Manual
-                        </button>
+                        <AlertCircle className="h-10 w-10 text-red-500" />
+                        <span className="text-sm font-bold text-slate-900 leading-snug">{error}</span>
+                        
+                        {permissionState === 'denied' && (
+                          <p className="text-[10px] text-slate-500 mb-2 italic">
+                            Tip: Look for the camera icon in your browser's address bar to reset permissions.
+                          </p>
+                        )}
+
+                        <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                          <button 
+                            onClick={() => {
+                              setError(null);
+                              startScanner();
+                            }}
+                            className="bg-slate-900 text-white rounded-[16px] py-3 text-[10px] font-black uppercase tracking-widest"
+                          >
+                            Try Again
+                          </button>
+                          <button 
+                            onClick={() => setActiveTab('manual')}
+                            className="text-[10px] font-black uppercase tracking-widest text-slate-400 underline decoration-slate-200"
+                          >
+                            Switch to Manual
+                          </button>
+                        </div>
                      </div>
                    )}
 
@@ -332,13 +395,3 @@ const Scanner: React.FC = () => {
 };
 
 export default Scanner;
-
-
-
-
-
-
-
-
-
-

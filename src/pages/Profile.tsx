@@ -117,22 +117,22 @@ const Profile: React.FC = () => {
 
       {/* Optimized Info Grid */}
       <section className="grid grid-cols-2 gap-2">
-        <div className="flex flex-col gap-1 rounded-[20px] border border-slate-100 bg-white p-3 shadow-sm">
-           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+        <div className="flex items-center gap-3 rounded-[20px] border border-slate-100 bg-white p-2.5 shadow-sm">
+           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
               <Shield className="h-4 w-4" />
            </div>
-           <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Identity</p>
+           <div className="min-w-0">
+              <p className="text-[7px] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">Identity</p>
               <p className="font-bold text-slate-900 uppercase text-[10px] truncate">{profile.role}</p>
            </div>
         </div>
 
-        <div className="flex flex-col gap-1 rounded-[20px] border border-slate-100 bg-white p-3 shadow-sm">
-           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 text-slate-400">
+        <div className="flex items-center gap-3 rounded-[20px] border border-slate-100 bg-white p-2.5 shadow-sm">
+           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
               <Calendar className="h-4 w-4" />
            </div>
-           <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Joined</p>
+           <div className="min-w-0">
+              <p className="text-[7px] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">Joined</p>
               <p className="font-bold text-slate-900 text-[10px] truncate">
                 {formatDate(profile?.createdAt, 'MMM dd, yy')}
               </p>

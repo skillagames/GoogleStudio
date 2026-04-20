@@ -2,6 +2,7 @@ import React, { useEffect, ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import NotificationManager from './components/NotificationManager';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
@@ -16,8 +17,29 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
   
   if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-slate-950">
-      <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+    <div className="flex h-screen flex-col items-center justify-center bg-white">
+      <div className="relative mb-8 flex h-20 w-20 items-center justify-center">
+        {/* Spinning Outer Ring */}
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+          className="absolute inset-0 rounded-full border-[3px] border-slate-100 border-t-slate-900"
+        />
+        
+        {/* Static Inner Circle with IO */}
+        <div className="flex h-14 w-14 items-center justify-center bg-white rounded-full shadow-lg shadow-slate-200/50">
+          <span className="font-black text-lg text-slate-900 tracking-tighter">IO</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center">
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">Synchronizing</span>
+        <div className="mt-2 flex gap-1">
+          <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }} className="h-1 w-1 rounded-full bg-slate-900" />
+          <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="h-1 w-1 rounded-full bg-slate-900" />
+          <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="h-1 w-1 rounded-full bg-slate-900" />
+        </div>
+      </div>
     </div>
   );
   
@@ -55,6 +77,7 @@ const PageTransition = ({ children }: { children: ReactNode }) => {
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationManager />
       <BrowserRouter>
         <div className="min-h-screen bg-bg-main font-sans text-slate-800">
           <Routes>
