@@ -230,7 +230,7 @@ const Profile: React.FC = () => {
 
       {/* Footer Branding */}
       <div className="text-center pt-2">
-        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">IOtConnect core v1.2.0-SIM</p>
+        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">IoTConnect core v1.2.0-SIM</p>
       </div>
 
       {/* Edit Profile Modal */}

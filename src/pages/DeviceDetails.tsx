@@ -35,6 +35,36 @@ const DeviceDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(0);
+  const [paymentStatus, setPaymentStatus] = useState<'success' | 'cancel' | null>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin to ensure it's from our app
+      if (event.origin !== window.location.origin) return;
+      
+      if (event.data?.type === 'PAYFAST_PAYMENT_RESULT') {
+        const { status } = event.data;
+        if (status === 'success') {
+          setPaymentStatus('success');
+          // Wait a bit then refresh device data
+          setTimeout(loadData, 2000);
+        } else {
+          setPaymentStatus('cancel');
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const PLANS = [
+    { id: 0, name: "Starter Pulse", price: "$4.99", desc: "Basic connectivity for 30 days" },
+    { id: 1, name: "Monthly Booster", price: "$9.99", desc: "Unlimited data for 30 days" },
+    { id: 2, name: "Quarterly Core", price: "$24.99", desc: "Solid performance for 90 days" },
+    { id: 3, name: "Annual Pro", price: "$89.99", desc: "Best value for power users" }
+  ];
 
   useEffect(() => {
     if (id) loadData();
@@ -70,15 +100,77 @@ const DeviceDetails: React.FC = () => {
 
   const handleRenew = async () => {
     setIsRenewing(true);
-    // Simulate delay
-    await new Promise(r => setTimeout(r, 1500));
     try {
-      await deviceService.renewSubscription(id!);
-      await loadData();
+      const plan = PLANS[selectedPlan];
+      // PayFast requires amount to have 2 decimal places (e.g. 10.00)
+      const amount = parseFloat(plan.price.replace('$', '')).toFixed(2);
+      const m_payment_id = `INFRA-${id}-${Date.now()}`;
+      
+      // Use our backend callback route
+      const baseUrl = window.location.origin;
+      const return_url = `${baseUrl}/api/payments/payfast-callback?status=success`;
+      const cancel_url = `${baseUrl}/api/payments/payfast-callback?status=cancel`;
+      const notify_url = 'https://webhook.site/placeholder';
+      
+      // Request signature from our backend
+      const response = await fetch('/api/payments/payfast-signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          item_name: plan.name,
+          m_payment_id,
+          return_url,
+          cancel_url,
+          notify_url 
+        })
+      });
+
+      const { signature, merchant_id, merchant_key, sandbox_url } = await response.json();
+
+      // Clear renewing state
+      setIsRenewing(false);
       setShowRenewModal(false);
+
+      // Open a popup for the payment
+      const paymentWindow = window.open('about:blank', 'payfast_popup', 'width=500,height=700');
+      
+      if (!paymentWindow) {
+        alert('Please allow popups to complete the payment.');
+        return;
+      }
+
+      // Create and submit PayFast form in the POPUP
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = sandbox_url;
+      form.target = 'payfast_popup';
+
+      const fields = {
+        merchant_id,
+        merchant_key,
+        return_url,
+        cancel_url,
+        notify_url,
+        m_payment_id,
+        amount,
+        item_name: plan.name,
+        signature
+      };
+
+      Object.entries(fields).forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value as string;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+      form.submit();
+
     } catch (err) {
-      console.error(err);
-    } finally {
+      console.error('Payment initialization failed:', err);
       setIsRenewing(false);
     }
   };
@@ -91,6 +183,42 @@ const DeviceDetails: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Payment Status Banners */}
+      <AnimatePresence>
+        {paymentStatus === 'success' && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              <div>
+                <p className="text-xs font-black text-emerald-900 uppercase">Protocol Success</p>
+                <p className="text-[10px] text-emerald-600 font-medium">Node subscription is currently processing renewal.</p>
+              </div>
+              <button onClick={() => setPaymentStatus(null)} className="ml-auto text-emerald-400"><XCircle className="h-4 w-4" /></button>
+            </div>
+          </motion.div>
+        )}
+        {paymentStatus === 'cancel' && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-slate-400" />
+              <div>
+                <p className="text-xs font-black text-slate-900 uppercase">Action Aborted</p>
+                <p className="text-[10px] text-slate-500 font-medium">The payment process was cancelled by the operator.</p>
+              </div>
+              <button onClick={() => setPaymentStatus(null)} className="ml-auto text-slate-300"><XCircle className="h-4 w-4" /></button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header Card */}
       <section className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
          <div className={cn(
@@ -219,50 +347,61 @@ const DeviceDetails: React.FC = () => {
       {/* Renew Modal */}
       <AnimatePresence>
         {showRenewModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowRenewModal(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              className="relative w-full max-w-md rounded-t-[40px] bg-white p-8 sm:rounded-[32px] shadow-2xl"
+              initial={{ scale: 0.9, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 10 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-sm rounded-[32px] bg-white p-5 shadow-2xl overflow-hidden"
             >
-              <div className="flex flex-col items-center gap-4 text-center">
-                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <CreditCard className="h-8 w-8" />
+              <div className="flex flex-col items-center text-center">
+                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 mb-3">
+                    <CreditCard className="h-5 w-5" />
                  </div>
-                 <h2 className="text-2xl font-black text-slate-900">Renew Subscription</h2>
-                 <p className="text-sm text-slate-500">Choose a plan to reactivate your device services instantly.</p>
+                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Reactivate Node</h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select connectivity payload</p>
                  
-                 <div className="mt-4 w-full space-y-3">
-                    <PlanOption name="Monthly Booster" price="$9.99" desc="Unlimited data for 30 days" active />
-                    <PlanOption name="Annual Pro" price="$89.99" desc="Best value for power users" />
+                 <div className="mt-4 w-full space-y-1.5">
+                    {PLANS.map((plan) => {
+                      const { id, ...rest } = plan;
+                      return (
+                        <PlanOption 
+                          key={id}
+                          {...rest}
+                          active={selectedPlan === id}
+                          onClick={() => setSelectedPlan(id)}
+                        />
+                      );
+                    })}
                  </div>
 
-                 <button 
-                  onClick={handleRenew}
-                  disabled={isRenewing}
-                  className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl bg-primary py-4 font-bold text-white transition-all active:scale-95 disabled:opacity-50 shadow-lg shadow-primary/20"
-                 >
-                   {isRenewing ? (
-                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                   ) : (
-                     <>Confirm Payment</>
-                   )}
-                 </button>
-                 <button 
-                  onClick={() => setShowRenewModal(false)}
-                  className="text-sm font-bold text-slate-500"
-                 >
-                   Cancel
-                 </button>
+                 <div className="mt-5 w-full space-y-2">
+                   <button 
+                    onClick={handleRenew}
+                    disabled={isRenewing}
+                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/10 transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                   >
+                     {isRenewing ? (
+                       <RefreshCcw className="h-4 w-4 animate-spin" />
+                     ) : (
+                       <>Execute Protocol</>
+                     )}
+                   </button>
+                   <button 
+                    onClick={() => setShowRenewModal(false)}
+                    className="w-full py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                   >
+                     Abort Action
+                   </button>
+                 </div>
               </div>
             </motion.div>
           </div>
@@ -273,30 +412,42 @@ const DeviceDetails: React.FC = () => {
 };
 
 const DetailBadge = ({ icon: Icon, label, value }: { icon: any, label: string, value: string }) => (
-  <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+  <div className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400">
       <Icon className="h-5 w-5" />
     </div>
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{label}</p>
-      <p className="text-sm font-bold text-slate-900 italic">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-0.5">{label}</p>
+      <p className="text-sm font-bold text-slate-900 italic leading-none">{value}</p>
     </div>
   </div>
 );
 
-const PlanOption = ({ name, price, desc, active }: { name: string, price: string, desc: string, active?: boolean }) => (
-  <div className={cn(
-    "flex w-full items-center justify-between rounded-xl border p-4 text-left",
-    active ? "border-primary bg-primary/5" : "border-slate-100 bg-white"
-  )}>
-    <div>
-      <h4 className="font-bold text-slate-900 text-sm">{name}</h4>
-      <p className="text-[10px] text-slate-500">{desc}</p>
+interface PlanOptionProps {
+  key?: number | string;
+  name: string;
+  price: string;
+  desc: string;
+  active?: boolean;
+  onClick: () => void;
+}
+
+const PlanOption = ({ name, price, desc, active, onClick }: PlanOptionProps) => (
+  <button 
+    onClick={onClick}
+    className={cn(
+      "flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all active:scale-[0.98]",
+      active ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/10" : "border-slate-100 bg-white hover:border-slate-200"
+    )}
+  >
+    <div className="min-w-0">
+      <h4 className={cn("font-black text-[11px] uppercase tracking-wider truncate", active ? "text-white" : "text-slate-900")}>{name}</h4>
+      <p className={cn("text-[9px] font-medium leading-none mt-1", active ? "text-white/60" : "text-slate-400")}>{desc}</p>
     </div>
-    <div className="text-right">
-      <p className="text-sm font-bold text-primary">{price}</p>
+    <div className="text-right ml-4 shrink-0">
+      <p className={cn("text-xs font-black", active ? "text-white" : "text-slate-900")}>{price}</p>
     </div>
-  </div>
+  </button>
 );
 
 export default DeviceDetails;

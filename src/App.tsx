@@ -26,9 +26,9 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
           className="absolute inset-0 rounded-full border-[3px] border-slate-100 border-t-slate-900"
         />
         
-        {/* Static Inner Circle with IO */}
+        {/* Static Inner Circle with IoT */}
         <div className="flex h-14 w-14 items-center justify-center bg-white rounded-full shadow-lg shadow-slate-200/50">
-          <span className="font-black text-lg text-slate-900 tracking-tighter">IO</span>
+          <span className="font-black text-lg text-slate-900 tracking-tighter">IoT</span>
         </div>
       </div>
 

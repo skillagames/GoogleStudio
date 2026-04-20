@@ -108,7 +108,7 @@ const Login: React.FC = () => {
               }}
               className="bg-black text-white px-2 py-0.5 rounded-lg font-black text-2xl leading-tight shadow-xl"
             >
-              IO
+              IoT
             </motion.div>
             
             <div className="flex flex-col items-start leading-none mt-1">
@@ -118,7 +118,7 @@ const Login: React.FC = () => {
                 transition={{ delay: 0.4, duration: 0.5 }}
                 className="text-3xl font-black tracking-tighter text-slate-900 leading-none"
               >
-                tConnect
+                Connect
               </motion.span>
               <motion.span 
                 initial={ENABLE_LOGO_ANIMATION ? { opacity: 0 } : {}}

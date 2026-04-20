@@ -73,7 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
             }}
             className="bg-black text-white px-1.5 py-0.5 rounded font-black text-base leading-tight shadow-sm"
           >
-            IO
+            IoT
           </motion.div>
           <div className="flex flex-col leading-none">
             <motion.span 
@@ -82,7 +82,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="text-lg font-black tracking-tighter text-slate-900"
             >
-              tConnect
+              Connect
             </motion.span>
             <motion.span 
               initial={ENABLE_LOGO_ANIMATION ? { opacity: 0 } : {}}

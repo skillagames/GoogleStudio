@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone, Signal, AlertCircle, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { Smartphone, Signal, AlertCircle, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { deviceService, Device } from '../services/deviceService';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, cn } from '../lib/utils';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const Devices: React.FC = () => {
   const { user } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired'>('all');
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,10 +32,14 @@ const Devices: React.FC = () => {
     }
   };
 
-  const filteredDevices = devices.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    d.serialNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDevices = devices.filter(d => {
+    const matchesSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      d.serialNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || d.subscriptionStatus === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) return (
     <div className="flex h-64 items-center justify-center">
@@ -42,31 +48,68 @@ const Devices: React.FC = () => {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] space-y-6 overflow-hidden">
-      <header className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Device Inventory</h1>
-          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Infrastructure: {devices.length} Nodes</p>
-        </div>
-
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search serial or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl bg-white border border-slate-100 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 focus:border-slate-900 focus:outline-none transition-all shadow-sm"
-            />
+    <div className="flex flex-col h-[calc(100vh-180px)] overflow-hidden -mt-2">
+      {/* Fixed Header Box */}
+      <div className="sticky top-0 z-30 bg-bg-main/95 pb-4 pt-2 backdrop-blur-sm">
+        <header className="space-y-4 px-1">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Device Inventory</h1>
+            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Infrastructure: {devices.length} Nodes</p>
           </div>
-          <button className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-slate-100 text-slate-900 shadow-sm transition-transform active:scale-95">
-            <SlidersHorizontal className="h-5 w-5" />
-          </button>
-        </div>
-      </header>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Search serial or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-2xl bg-white border border-slate-100 py-3.5 pl-11 pr-4 text-xs font-bold text-slate-900 focus:border-slate-900 focus:outline-none transition-all shadow-sm"
+              />
+            </div>
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-2xl border transition-all active:scale-95 shadow-sm",
+                showFilters ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-100 text-slate-900"
+              )}
+            >
+              <SlidersHorizontal className="h-5 w-5" />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex gap-2 py-1">
+                  {(['all', 'active', 'expired'] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={cn(
+                        "flex-1 rounded-xl py-2.5 text-[9px] font-black uppercase tracking-widest transition-all",
+                        statusFilter === status 
+                          ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10" 
+                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600"
+                      )}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </header>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-3 p-1 pb-32 custom-scrollbar">
         {filteredDevices.length > 0 ? (
           filteredDevices.map((device, idx) => (
             <motion.div 
