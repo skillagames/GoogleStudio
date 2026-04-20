@@ -288,7 +288,7 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
         <Smartphone className="h-6 w-6" />
       </div>
       
-      <div className="flex-1 text-left">
+      <div className="flex-1 min-w-0 text-left">
         <h4 className="text-sm font-black tracking-tight text-slate-900 line-clamp-1">{device.name}</h4>
         <div className="flex items-center gap-1.5 font-mono text-[8px] font-bold uppercase tracking-tight">
           <span className={cn(

@@ -154,7 +154,7 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
         <Smartphone className="h-7 w-7" />
       </div>
       
-      <div className="flex-1 text-left">
+      <div className="flex-1 min-w-0 text-left">
         <h4 className="text-base font-black tracking-tight text-slate-900 line-clamp-1">{device.name}</h4>
         <div className="mt-0.5 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-tight text-slate-400">
           <span>SN:{device.serialNumber.slice(-6)}</span>

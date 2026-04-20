@@ -122,9 +122,9 @@ const DeviceDetails: React.FC = () => {
             isExpired ? "bg-red-500/10" : isInactive ? "bg-slate-500/10" : "bg-primary/10"
           )} />
           
-          <div className="relative flex justify-between items-start">
-            <div className="space-y-1">
-              <h2 className="text-lg font-black text-slate-900 leading-none">{device.name}</h2>
+          <div className="relative flex items-start">
+            <div className="flex-1 space-y-1 pr-14">
+              <h2 className="text-lg font-black text-slate-900 leading-none break-words">{device.name}</h2>
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">SN: {device.serialNumber}</p>
@@ -143,7 +143,7 @@ const DeviceDetails: React.FC = () => {
               </div>
             </div>
             <div className={cn(
-              "flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-tight whitespace-nowrap",
+              "absolute right-0 top-0 flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-tight whitespace-nowrap",
               isExpired && "bg-red-50 text-red-500",
               isInactive && "bg-slate-100 text-slate-500",
               !isExpired && !isInactive && "bg-emerald-50 text-emerald-600"
