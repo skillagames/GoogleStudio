@@ -150,13 +150,13 @@ class NotificationService {
     // Create the toast (iOS Dynamic Island / Capsule style - LIGHT THEME WITH AMBER ALERT ACCENT)
     const toast = document.createElement('div');
     toast.style.cssText = `
-      background: rgba(255, 255, 255, 0.92);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(255, 255, 255, 0.7);
+      -webkit-backdrop-filter: blur(25px) saturate(200%);
+      backdrop-filter: blur(25px) saturate(200%);
       color: #1a1a1a;
       padding: 10px 14px;
       border-radius: 22px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(244, 63, 94, 0.25);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05), 0 0 0 0.5px rgba(244, 63, 94, 0.15);
       display: flex;
       align-items: center;
       gap: 12px;
@@ -359,28 +359,51 @@ class NotificationService {
 
     try {
       const alerts = await this.getAlerts(userId);
+      if (alerts.length === 0) return;
 
-      alerts.forEach(alert => {
+      // Group alerts by type to provide a clean summary
+      const inactive = alerts.filter(a => a.type === 'inactive');
+      const expired = alerts.filter(a => a.type === 'expired');
+      const expiring = alerts.filter(a => a.type === 'expiring');
+
+      const totalAlerts = alerts.length;
+
+      // If we have multiple alerts, just show ONE summary toast to avoid clutter
+      if (totalAlerts > 1) {
+        let summaryBody = '';
+        if (expired.length > 0) summaryBody += `${expired.length} expired, `;
+        if (inactive.length > 0) summaryBody += `${inactive.length} inactive, `;
+        if (expiring.length > 0) summaryBody += `${expiring.length} expiring soon`;
+        summaryBody = summaryBody.replace(/, $/, '');
+
+        this.notify({
+          title: 'Device Maintenance Required',
+          body: `You have ${totalAlerts} devices that require attention: ${summaryBody}.`,
+          tag: 'summary-alert'
+        });
+      } else if (totalAlerts === 1) {
+        // Single alert path
+        const alert = alerts[0];
+        let title = 'Device Alert';
+        let body = '';
+
         if (alert.type === 'inactive') {
-          this.notify({
-            title: 'Activation Required',
-            body: `Device "${alert.deviceName}" needs an active subscription to start transmitting data.`,
-            tag: `inactive-${alert.deviceId}`
-          });
+          title = 'Activation Required';
+          body = `Device "${alert.deviceName}" needs a subscription to start transmitting.`;
         } else if (alert.type === 'expired') {
-          this.notify({
-            title: 'Device Expired',
-            body: `Your device "${alert.deviceName}" has expired. Please renew your subscription.`,
-            tag: `expired-${alert.deviceId}`
-          });
+          title = 'Device Expired';
+          body = `Your device "${alert.deviceName}" has expired and needs renewal.`;
         } else if (alert.type === 'expiring') {
-          this.notify({
-            title: 'Subscription Expiring Soon',
-            body: `Your device "${alert.deviceName}" will expire on ${alert.date.toLocaleDateString()}.`,
-            tag: `expiring-${alert.deviceId}`
-          });
+          title = 'Expiring Soon';
+          body = `Your device "${alert.deviceName}" expires on ${alert.date.toLocaleDateString()}.`;
         }
-      });
+
+        this.notify({
+          title,
+          body,
+          tag: `${alert.type}-${alert.deviceId}`
+        });
+      }
     } catch (error) {
       console.error('Error checking device expirations:', error);
     }
