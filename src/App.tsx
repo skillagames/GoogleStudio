@@ -80,11 +80,7 @@ const PageTransition = ({ children }: { children: ReactNode }) => {
   );
 };
 
-import { useMobileSetup } from './hooks/useMobileSetup';
-
 export default function App() {
-  useMobileSetup();
-  
   return (
     <AuthProvider>
       <NotificationManager />
