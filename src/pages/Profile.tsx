@@ -391,7 +391,7 @@ const Profile: React.FC = () => {
                   onClick={() => setShowConfirmDelete(false)}
                   className="py-2 text-[9px] font-black uppercase tracking-widest text-slate-400"
                 >
-                  Abort Action
+                  Cancel
                 </button>
               </div>
             </motion.div>

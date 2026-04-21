@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
-  Home, 
   Plus, 
-  User as UserIcon, 
-  Bell,
   Settings, 
   ChevronLeft, 
   LayoutDashboard,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Scan,
+  Radio,
+  Home,
+  User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { auth } from '../lib/firebase';
@@ -58,8 +59,8 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
-    { icon: Plus, label: 'Scan', path: '/scan' },
-    { icon: Bell, label: 'Alerts', path: '/alerts' },
+    { icon: Scan, label: 'Scan', path: '/scan' },
+    { icon: Radio, label: 'Alerts', path: '/alerts' },
     { icon: UserIcon, label: 'Profile', path: '/profile' },
   ];
 
@@ -136,25 +137,47 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
       {/* Bottom Navigation (Mobile) */}
       <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-slate-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="mx-auto flex h-16 max-w-lg items-center justify-around px-2 pb-safe">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={cn(
-                "flex flex-col items-center gap-1 p-2 transition-colors relative",
-                location.pathname === item.path ? "text-primary" : "text-slate-400"
-              )}
-            >
-              <item.icon className="h-6 w-6" />
-              {item.label === 'Alerts' && alertCount > 0 && (
-                <span className="absolute right-3.5 top-2 flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500"></span>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 transition-colors relative group",
+                  isActive ? "text-primary" : "text-slate-400"
+                )}
+              >
+                <motion.div
+                  animate={isActive ? { scale: 1.2, y: -2 } : { scale: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  <item.icon className={cn("h-6 w-6", isActive ? "stroke-[2.5px]" : "stroke-[2px]")} />
+                </motion.div>
+                
+                {item.label === 'Alerts' && alertCount > 0 && (
+                  <span className="absolute right-3 top-2 flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 border border-white"></span>
+                  </span>
+                )}
+                <span className={cn(
+                  "text-[9px] uppercase tracking-[0.1em] font-black transition-all",
+                  isActive ? "opacity-100 scale-100" : "opacity-60 scale-95"
+                )}>
+                  {item.label}
                 </span>
-              )}
-              <span className="text-[10px] uppercase tracking-widest font-bold">{item.label}</span>
-            </button>
-          ))}
+                
+                {isActive && (
+                  <motion.div 
+                    layoutId="nav-underline"
+                    className="absolute -bottom-1 h-0.5 w-6 rounded-full bg-primary"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>

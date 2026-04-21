@@ -145,7 +145,7 @@ class NotificationService {
       alerts.forEach(alert => {
         if (alert.type === 'inactive') {
           this.notify({
-            title: 'Provisioning Required',
+            title: 'Activation Required',
             body: `Device "${alert.deviceName}" needs an active subscription to start transmitting data.`,
             tag: `inactive-${alert.deviceId}`
           });

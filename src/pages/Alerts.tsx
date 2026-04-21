@@ -119,7 +119,7 @@ const Alerts: React.FC = () => {
                       </div>
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight mt-0.5">{alert.message}</p>
                       <p className="text-[9px] font-medium text-slate-400 mt-1 italic">
-                        {alert.type === 'expired' ? 'Expired on ' : alert.type === 'inactive' ? 'Waiting for provision since ' : 'Expiring on '}
+                        {alert.type === 'expired' ? 'Expired on ' : alert.type === 'inactive' ? 'Waiting for activation since ' : 'Expiring on '}
                         {alert.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>

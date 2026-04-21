@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Smartphone, Battery, Signal, ChevronRight, PlusCircle, AlertCircle, X, Zap, Activity, ShieldCheck } from 'lucide-react';
 import { deviceService, Device } from '../services/deviceService';
@@ -13,6 +13,9 @@ const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<'active' | 'expired' | 'inactive' | null>(null);
   const [isSticky, setIsSticky] = useState(false);
   const navigate = useNavigate();
+  const statsRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -20,6 +23,20 @@ const Dashboard: React.FC = () => {
       deviceService.seedMasterRegistry();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Automatically scroll to the filter section when a status is selected
+    // to hide the welcome hero and focus on the inventory
+    if (!loading && filter && scrollAnchorRef.current) {
+      const offset = scrollAnchorRef.current.offsetTop - 64; // Account for 64px layout header
+      window.scrollTo({ top: offset, behavior: 'smooth' });
+      
+      // Also reset the internal list scroll to the top
+      if (listRef.current) {
+        listRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  }, [filter, loading]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,42 +77,71 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-10">
-      {/* Hero Welcome Section - Compact & Centralized */}
-      <section className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm">
+      {/* Hero Welcome Section - Compressed Sleek Header */}
+      <section>
         <motion.div
-          initial={{ opacity: 0, y: 5 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative flex flex-col items-center text-center space-y-4"
+          className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm"
         >
-          <div className="space-y-0.5">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Device Cluster Control</span>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 leading-none">
-              Hello, <span className="text-primary">{firstName}</span>
-            </h1>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Cluster: Online</span>
+              </div>
+              <h1 className="text-2xl font-black tracking-tighter text-slate-900 leading-none">
+                Hello, <span className="text-primary">{firstName}</span>
+              </h1>
+              <p className="text-[10px] font-medium text-slate-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                Your cluster is secure. {devices.filter(d => d.subscriptionStatus === 'active').length} active nodes running.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => navigate('/scan')}
+                className="group flex items-center gap-2 rounded-xl bg-slate-900 px-3.5 py-2 text-white transition-all active:scale-95 shadow-lg shadow-slate-900/10"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Add Device</span>
+              </button>
+              <button 
+                onClick={() => navigate('/devices')}
+                className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2 text-slate-900 transition-all active:scale-95 hover:bg-slate-100"
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Inventory</span>
+              </button>
+            </div>
           </div>
           
-          <div className="flex w-full max-w-[240px] flex-col gap-1.5">
-            <button 
-              onClick={() => navigate('/scan')}
-              className="group flex w-full items-center justify-center gap-2 rounded-[16px] bg-slate-900 py-2.5 text-white transition-all active:scale-95"
-            >
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.1em]">Add Device</span>
-            </button>
-            <button 
-              onClick={() => navigate('/devices')}
-              className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-slate-50 border border-slate-100 py-2 text-slate-900 transition-all active:scale-95"
-            >
-              <Smartphone className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-black uppercase tracking-[0.1em]">View Inventory</span>
-            </button>
+          <div className="mt-4 flex items-center gap-5 border-t border-slate-50 pt-3.5">
+             <div className="flex flex-col">
+                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Active Pool</span>
+                <span className="text-[11px] font-bold text-slate-900 mt-1 leading-none">{devices.filter(d => d.subscriptionStatus === 'active').length}</span>
+             </div>
+             <div className="h-3 w-px bg-slate-100" />
+             <div className="flex flex-col">
+                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Cluster Health</span>
+                <span className="text-[11px] font-bold text-slate-900 mt-1 leading-none">92.4%</span>
+             </div>
+             <div className="h-3 w-px bg-slate-100" />
+             <div className="flex flex-col">
+                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Logistics</span>
+                <span className="text-[11px] font-bold text-slate-900 mt-1 leading-none">Optimized</span>
+             </div>
           </div>
         </motion.div>
       </section>
+      
+      <div ref={scrollAnchorRef} />
 
       {/* Stats Quick View - Constant Sticky Header */}
-      <section className={cn(
-        "sticky top-[64px] z-20 py-2 transition-colors duration-200",
+      <section 
+        ref={statsRef}
+        className={cn(
+          "sticky top-[64px] z-20 py-2 transition-colors duration-200 space-y-4",
         isSticky ? "bg-bg-main/90 backdrop-blur-md" : "bg-transparent"
       )}>
         <div className="grid grid-cols-3 gap-2">
@@ -116,7 +162,7 @@ const Dashboard: React.FC = () => {
             onClick={() => setFilter(filter === 'expired' ? null : 'expired')}
           />
           <StatCard 
-            label="PENDING" 
+            label="INACTIVE" 
             value={devices.filter(d => d.subscriptionStatus === 'inactive').length.toString()} 
             color="slate" 
             icon={Smartphone}
@@ -124,11 +170,8 @@ const Dashboard: React.FC = () => {
             onClick={() => setFilter(filter === 'inactive' ? null : 'inactive')}
           />
         </div>
-      </section>
 
-      {/* Device List Header & Natural List */}
-      <section>
-        <div className="flex items-center justify-between pb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Quick Inventory</h2>
             {filter && (
@@ -142,45 +185,58 @@ const Dashboard: React.FC = () => {
           </div>
           <span className="text-[9px] font-bold text-slate-400 font-mono tracking-tight">{filteredDevices.length} DEVICE(S)</span>
         </div>
-        
-        <div className="grid gap-3">
-          {filteredDevices.length > 0 ? (
-            filteredDevices.map((device, idx) => (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.03 }}
-                key={device.id}
-              >
-                <DeviceCard device={device} onClick={() => navigate(`/devices/${device.id}`)} />
-              </motion.div>
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-4 py-10 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-white border border-slate-100 text-slate-200 shadow-sm">
-                <Smartphone className="h-8 w-8" />
-              </div>
-              <p className="text-xs font-bold text-slate-400">{filter ? `No ${filter} devices found` : 'No devices provisioned'}</p>
-              {!filter && (
-                <button 
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await deviceService.seedDevices(user!.uid);
-                      await loadDevices();
-                    } catch (err) {
-                      console.error(err);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="text-[10px] font-black uppercase tracking-widest text-primary underline"
-                >
-                  Seed Simulation
-                </button>
-              )}
-            </div>
+      </section>
+
+      {/* Natural List with Independent Scroll (conditional) */}
+      <section className="relative">
+        <div 
+          ref={listRef} 
+          className={cn(
+            "pr-1 -mr-1 scrollbar-thin scrollbar-thumb-slate-200 transition-all duration-300",
+            filter 
+              ? (isSticky ? "h-[360px] overflow-y-auto" : "h-[360px] overflow-hidden") 
+              : "h-auto overflow-visible"
           )}
+        >
+          <div className="grid gap-3 pb-10">
+            {filteredDevices.length > 0 ? (
+              filteredDevices.map((device, idx) => (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: idx * 0.03 }}
+                  key={device.id}
+                >
+                  <DeviceCard device={device} onClick={() => navigate(`/devices/${device.id}`)} />
+                </motion.div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[24px] bg-white border border-slate-100 text-slate-200 shadow-sm">
+                  <Smartphone className="h-8 w-8" />
+                </div>
+                <p className="text-xs font-bold text-slate-400">{filter ? `No ${filter} devices found` : 'No devices provisioned'}</p>
+                {!filter && (
+                  <button 
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        await deviceService.seedDevices(user!.uid);
+                        await loadDevices();
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="text-[10px] font-black uppercase tracking-widest text-primary underline"
+                  >
+                    Seed Simulation
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

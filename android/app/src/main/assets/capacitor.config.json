@@ -1,0 +1,5 @@
+{
+	"appId": "com.iotconnect.app",
+	"appName": "IoT Connect App",
+	"webDir": "dist"
+}

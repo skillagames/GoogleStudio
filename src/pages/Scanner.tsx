@@ -7,6 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
+import { Camera as CapCamera } from '@capacitor/camera';
+import { Device } from '@capacitor/device';
+
 const Scanner: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'scan' | 'manual'>('scan');
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -16,7 +19,8 @@ const Scanner: React.FC = () => {
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [permissionState, setPermissionState] = useState<PermissionState | 'unknown'>('unknown');
+  const [permissionState, setPermissionState] = useState<PermissionStatus['state'] | 'unknown'>('unknown');
+  const [isMobile, setIsMobile] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -24,16 +28,25 @@ const Scanner: React.FC = () => {
   const isTransitioningRef = useRef(false);
   const scannerId = "reader";
 
+  useEffect(() => {
+    const checkPlatform = async () => {
+      const info = await Device.getInfo();
+      setIsMobile(info.platform === 'android' || info.platform === 'ios');
+    };
+    checkPlatform();
+  }, []);
+
   const checkPermissions = async () => {
     try {
-      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
-      setPermissionState(result.state);
-      
-      result.onchange = () => {
+      if (isMobile) {
+        const status = await CapCamera.checkPermissions();
+        setPermissionState(status.camera === 'granted' ? 'granted' : status.camera);
+        return status.camera === 'granted' ? 'granted' : status.camera;
+      } else {
+        const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
         setPermissionState(result.state);
-      };
-      
-      return result.state;
+        return result.state;
+      }
     } catch (err) {
       console.warn("Permissions API not supported or failed", err);
       return 'unknown';
@@ -42,10 +55,16 @@ const Scanner: React.FC = () => {
 
   const requestPermission = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      stream.getTracks().forEach(track => track.stop()); // Stop immediately
-      setPermissionState('granted');
-      return true;
+      if (isMobile) {
+        const status = await CapCamera.requestPermissions({ permissions: ['camera'] });
+        setPermissionState(status.camera);
+        return status.camera === 'granted';
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop()); // Stop immediately
+        setPermissionState('granted');
+        return true;
+      }
     } catch (err) {
       console.error("Permission request denied", err);
       setPermissionState('denied');

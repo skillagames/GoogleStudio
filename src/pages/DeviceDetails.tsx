@@ -153,13 +153,13 @@ const DeviceDetails: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 flex items-end justify-between border-t border-slate-50 pt-3">
+          <div className="mt-4 flex items-center justify-between border-t border-slate-50 pt-3">
              <div className="flex flex-col">
                 <p className="text-[7px] uppercase font-black text-slate-300 tracking-[0.2em] leading-none">
                   {isInactive ? 'Connectivity' : 'Expiration Date'}
                 </p>
                 <p className="text-sm font-black text-slate-900 mt-1.5 leading-none">
-                  {isInactive ? 'Pending Provision' : formatDate(device.expirationDate, 'MMMM dd, yyyy')}
+                  {isInactive ? 'Pending Activation' : formatDate(device.expirationDate, 'MMMM dd, yyyy')}
                 </p>
              </div>
              {(isExpired || isInactive) && (
@@ -171,7 +171,7 @@ const DeviceDetails: React.FC = () => {
                   )}
                 >
                   <RefreshCcw className="h-3.5 w-3.5" /> 
-                  {isInactive ? 'Provision Device' : 'Renew Plan'}
+                  {isInactive ? 'Activate' : 'Renew Plan'}
                 </button>
              )}
           </div>
@@ -320,14 +320,14 @@ const DeviceDetails: React.FC = () => {
                      {isRenewing ? (
                        <RefreshCcw className="h-4 w-4 animate-spin" />
                      ) : (
-                       <>Execute Protocol</>
+                       <>Purchase</>
                      )}
                    </button>
                    <button 
                     onClick={() => setShowRenewModal(false)}
                     className="w-full py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
                    >
-                     Abort Action
+                     Cancel
                    </button>
                  </div>
               </div>
