@@ -135,66 +135,132 @@ class NotificationService {
     return Notification.permission as any;
   }
 
+  private showForegroundToast(title: string, body: string) {
+    if (typeof document === 'undefined') return;
+
+    // Create toast container if it doesn't exist
+    let container = document.getElementById('iot-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'iot-toast-container';
+      container.style.cssText = 'position:fixed;top:20px;left:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    // Create the toast
+    const toast = document.createElement('div');
+    toast.style.cssText = 'background:rgba(0,0,0,0.9);color:white;padding:16px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:4px;transform:translateY(-20px);opacity:0;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);pointer-events:auto;border-left:4px solid #3b82f6;';
+    
+    const titleEl = document.createElement('div');
+    titleEl.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:2px;';
+    titleEl.innerText = title;
+
+    const bodyEl = document.createElement('div');
+    bodyEl.style.cssText = 'font-size:14px;color:rgba(255,255,255,0.8);line-height:1.4;';
+    bodyEl.innerText = body;
+
+    toast.appendChild(titleEl);
+    toast.appendChild(bodyEl);
+    container.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => {
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+    }, 10);
+
+    // Animate out and remove
+    setTimeout(() => {
+      toast.style.transform = 'translateY(-20px)';
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
+
+    // Click to dismiss
+    toast.onclick = () => {
+      toast.style.transform = 'translateY(-20px)';
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 300);
+    };
+  }
+
   public async notify(options: NotificationOptions) {
-    // 0. Trigger immediate vibration (restored as requested)
+    // 0. Trigger immediate physical feedback
     if ('vibrate' in navigator) {
       navigator.vibrate([200, 100, 200]);
     }
 
     const standalone = this.isStandalone();
+
+    // 1. If in Standalone/APK mode, show an in-app toast immediately
+    // This solves the "Foreground Suppression" problem where WebViews block system banners while the app is active
+    if (standalone) {
+      this.showForegroundToast(options.title, options.body);
+    }
     
-    // 1. Try Native Bridges (WebToNative, etc)
+    // 2. Try Native Bridges (WebToNative, etc)
     const nativeApp = (window as any).WTN || (window as any).TN || (window as any).JSBridge || (window as any).Android;
-    if (nativeApp) {
-       const method = nativeApp.showNotification || nativeApp.localNotification || nativeApp.pushNotification || nativeApp.notify;
-       if (typeof method === 'function') {
-         try {
-           // signature A: (title, body)
+    const webkit = (window as any).webkit;
+    
+    if (nativeApp || (webkit && webkit.messageHandlers)) {
+       try {
+         // WebToNative / Bridge Path
+         const method = nativeApp?.showNotification || nativeApp?.localNotification || nativeApp?.notify;
+         if (typeof method === 'function') {
            method.call(nativeApp, options.title, options.body);
-           // signature B: ({title, body}) - บาง bridges expect object
-           try { method.call(nativeApp, { title: options.title, body: options.body }); } catch (e) { /* silent fail */ }
-           return; 
-         } catch (e) {
-           console.warn('Native bridge failed:', e);
+         } else if (webkit?.messageHandlers?.notification) {
+           webkit.messageHandlers.notification.postMessage({ title: options.title, body: options.body });
          }
+         
+         // Don't return here if we want to also try standard paths for multi-targeting
+       } catch (e) {
+         console.warn('Native bridge notify failed:', e);
        }
     }
 
     // Simplified options for mobile/APK compatibility
     const swOptions: any = {
       body: options.body,
-      tag: options.tag || 'iot-notif',
+      tag: options.tag || 'iot-notif-' + Date.now(),
       vibrate: [200, 100, 200],
-      requireInteraction: false // Disabled for better mobile compatibility
+      requireInteraction: false
     };
 
-    // Only add icon if we are in a normal browser mode to avoid blocking APK WebViews
     if (!standalone) {
       swOptions.icon = options.icon || APP_ICON_URL;
       swOptions.badge = APP_ICON_URL;
     }
 
-    // 2. Try Service Worker (Mandatory for most Android WebViews)
+    // 3. Service Worker Path (Recommended for Android/APK)
+    // Chromium on Android explicitly forbids the 'new Notification()' constructor
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
         if (registration && 'showNotification' in registration) {
           await registration.showNotification(options.title, swOptions);
-          return;
+          return; // Exit successfully if SW handled it
         }
       } catch (swError) {
         console.warn('SW notification failed:', swError);
       }
     }
 
-    // 3. Fallback to standard Browser Notification API
-    if (typeof Notification !== 'undefined') {
+    // 4. Classic Fallback (Avoid on mobile browsers to prevent "Illegal constructor" errors)
+    const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (typeof Notification !== 'undefined' && !isMobileBrowser) {
       try {
-        if (!standalone && Notification.permission !== 'granted') {
+        if (!standalone && (Notification.permission as string) !== 'granted') {
           await this.requestPermission();
+          if ((Notification.permission as string) !== 'granted') return;
         }
         
-        // Final attempt with full options for desktop browsers
         const fullOptions = {
           ...swOptions,
           icon: options.icon || APP_ICON_URL,
@@ -202,10 +268,10 @@ class NotificationService {
           renotify: true
         };
         
-        const n = new Notification(options.title, fullOptions);
-        n.onclick = () => { window.focus(); n.close(); };
+        // This is where the "Illegal constructor" error usually happens
+        new Notification(options.title, fullOptions);
       } catch (error) {
-        console.error('Final fallback failed:', error);
+        console.warn('Classic Notification constructor failed (expected on some mobile browsers):', error);
       }
     }
   }
