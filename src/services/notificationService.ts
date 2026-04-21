@@ -8,8 +8,8 @@ export interface NotificationOptions {
   tag?: string;
 }
 
-// Custom SVG Data URL matching the app's "IoT" logo
-const APP_ICON_URL = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHp4PSI4MCIgZmlsbD0iYmxhY2siLz48dGV4dCB4PSIyNTYiIHk9IjI3NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSIyNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Jb1Q8L3RleHQ+PC9zdmc+`;
+// Use a remote URL for the icon as some WebViews block local/data URLs in notifications
+const APP_ICON_URL = 'https://picsum.photos/seed/iot/192/192';
 
 class NotificationService {
   private hasPermission: boolean = false;
@@ -161,21 +161,18 @@ class NotificationService {
       body: options.body,
       icon: options.icon || APP_ICON_URL,
       tag: options.tag || 'iot-connect-default',
-      badge: APP_ICON_URL,
       vibrate: [200, 100, 200],
       silent: false, // Ensure sound
       renotify: true, // Ensure vibration on repeat
       requireInteraction: true 
     };
 
-    // 2. Try Service Worker (Recommended for Android/APK)
+    // 2. Try Service Worker (Mandatory for most Android WebViews)
     if ('serviceWorker' in navigator) {
       try {
-        let registration = await navigator.serviceWorker.getRegistration();
-        if (!registration) registration = await navigator.serviceWorker.ready;
-        
+        const registration = await navigator.serviceWorker.ready;
         if (registration && 'showNotification' in registration) {
-          await (registration as any).showNotification(options.title, notificationOptions);
+          await registration.showNotification(options.title, notificationOptions);
           return;
         }
       } catch (swError) {
