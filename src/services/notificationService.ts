@@ -8,8 +8,8 @@ export interface NotificationOptions {
   tag?: string;
 }
 
-// Use a remote URL for the icon as some WebViews block local/data URLs in notifications
-const APP_ICON_URL = 'https://picsum.photos/seed/iot/192/192';
+// Custom SVG Data URL matching the app's "IoT" logo
+const APP_ICON_URL = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHp4PSI4MCIgZmlsbD0iYmxhY2siLz48dGV4dCB4PSIyNTYiIHk9IjI3NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSIyNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Jb1Q8L3RleHQ+PC9zdmc+`;
 
 class NotificationService {
   private hasPermission: boolean = false;
@@ -136,6 +136,11 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
+    // 0. Trigger immediate vibration (restored as requested)
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
+
     const standalone = this.isStandalone();
     
     // 1. Try Native Bridges (WebToNative, etc)
@@ -152,24 +157,29 @@ class NotificationService {
        }
     }
 
-    // 2. If Standalone (APK/PWA), try Service Worker IMMEDIATELY
-    // On many Android WebViews, the global Notification object is broken but ServiceWorker works.
-    if (standalone && 'serviceWorker' in navigator) {
+    const notificationOptions: any = {
+      body: options.body,
+      icon: options.icon || APP_ICON_URL,
+      tag: options.tag || 'iot-connect-default',
+      badge: APP_ICON_URL,
+      vibrate: [200, 100, 200],
+      silent: false, // Ensure sound
+      renotify: true, // Ensure vibration on repeat
+      requireInteraction: true 
+    };
+
+    // 2. Try Service Worker (Recommended for Android/APK)
+    if ('serviceWorker' in navigator) {
       try {
-        const registration = await navigator.serviceWorker.ready;
+        let registration = await navigator.serviceWorker.getRegistration();
+        if (!registration) registration = await navigator.serviceWorker.ready;
+        
         if (registration && 'showNotification' in registration) {
-          await (registration as any).showNotification(options.title, {
-            body: options.body,
-            icon: options.icon || APP_ICON_URL,
-            badge: APP_ICON_URL,
-            tag: options.tag || 'iot-connect-standalone',
-            vibrate: [200, 100, 200],
-            requireInteraction: true
-          });
+          await (registration as any).showNotification(options.title, notificationOptions);
           return;
         }
       } catch (swError) {
-        console.warn('Standalone SW notification failed:', swError);
+        console.warn('SW notification failed:', swError);
       }
     }
 
@@ -179,7 +189,7 @@ class NotificationService {
       return;
     }
 
-    // Bypass permission check for standalone as we assume it's granted
+    // Bypass permission check for standalone
     if (!standalone && Notification.permission !== 'granted') {
       if (Notification.permission === 'default') {
         const granted = await this.requestPermission();
@@ -190,31 +200,8 @@ class NotificationService {
     }
 
     try {
-      const notificationOptions: any = {
-        body: options.body,
-        icon: options.icon || APP_ICON_URL,
-        tag: options.tag || 'iot-connect-default',
-        badge: APP_ICON_URL,
-        vibrate: [200, 100, 200],
-        requireInteraction: true 
-      };
-
-      // Try Service Worker registration again for standard browser
-      if ('serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          if (registration && 'showNotification' in registration) {
-            await registration.showNotification(options.title, notificationOptions);
-            return;
-          }
-        } catch (swError) {
-          console.warn('SW notification fallback failed:', swError);
-        }
-      }
-
-      // Final desktop fallback
-      new Notification(options.title, notificationOptions);
-      if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+      const n = new Notification(options.title, notificationOptions);
+      n.onclick = () => { window.focus(); n.close(); };
     } catch (error) {
       console.error('Notification delivery failed:', error);
     }
