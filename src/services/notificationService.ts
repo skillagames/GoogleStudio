@@ -143,51 +143,76 @@ class NotificationService {
     if (!container) {
       container = document.createElement('div');
       container.id = 'iot-toast-container';
-      container.style.cssText = 'position:fixed;top:20px;left:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+      container.style.cssText = 'position:fixed;top:10px;left:0;right:0;z-index:99999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 12px;';
       document.body.appendChild(container);
     }
 
-    // Create the toast
+    // Create the toast (iOS Dynamic Island / Capsule style)
     const toast = document.createElement('div');
-    toast.style.cssText = 'background:rgba(0,0,0,0.9);color:white;padding:16px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.3);display:flex;flex-direction:column;gap:4px;transform:translateY(-20px);opacity:0;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);pointer-events:auto;border-left:4px solid #3b82f6;';
+    // Using Backdrop Filter for Glassmorphism
+    toast.style.cssText = `
+      background: rgba(28, 28, 30, 0.85);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(20px) saturate(180%);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 360px;
+      transform: translateY(-80px) scale(0.9);
+      opacity: 0;
+      transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+      pointer-events: auto;
+      user-select: none;
+    `;
     
+    // Icon (Simplified Logo)
+    const iconContainer = document.createElement('div');
+    iconContainer.style.cssText = 'width: 32px; height: 32px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 900; border: 0.5px solid rgba(255,255,255,0.2);';
+    iconContainer.innerHTML = '<span style="color:white; transform: scale(0.8);">IoT</span>';
+
+    const contentEl = document.createElement('div');
+    contentEl.style.cssText = 'display: flex; flex-direction: column; overflow: hidden;';
+
     const titleEl = document.createElement('div');
-    titleEl.style.cssText = 'font-weight:700;font-size:16px;margin-bottom:2px;';
+    titleEl.style.cssText = 'font-weight: 600; font-size: 14px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
     titleEl.innerText = title;
 
     const bodyEl = document.createElement('div');
-    bodyEl.style.cssText = 'font-size:14px;color:rgba(255,255,255,0.8);line-height:1.4;';
+    bodyEl.style.cssText = 'font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
     bodyEl.innerText = body;
 
-    toast.appendChild(titleEl);
-    toast.appendChild(bodyEl);
+    contentEl.appendChild(titleEl);
+    contentEl.appendChild(bodyEl);
+    toast.appendChild(iconContainer);
+    toast.appendChild(contentEl);
     container.appendChild(toast);
 
     // Animate in
-    setTimeout(() => {
-      toast.style.transform = 'translateY(0)';
-      toast.style.opacity = '1';
-    }, 10);
-
-    // Animate out and remove
-    setTimeout(() => {
-      toast.style.transform = 'translateY(-20px)';
-      toast.style.opacity = '0';
+    requestAnimationFrame(() => {
       setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 5000);
+        toast.style.transform = 'translateY(0) scale(1)';
+        toast.style.opacity = '1';
+      }, 50);
+    });
 
-    // Click to dismiss
-    toast.onclick = () => {
-      toast.style.transform = 'translateY(-20px)';
+    // Auto-remove
+    const removeToast = () => {
+      toast.style.transform = 'translateY(-10px) scale(0.9)';
       toast.style.opacity = '0';
       setTimeout(() => {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
-      }, 300);
+      }, 500);
     };
+
+    setTimeout(removeToast, 4500);
+
+    // Interaction
+    toast.onclick = removeToast;
   }
 
   public async notify(options: NotificationOptions) {
