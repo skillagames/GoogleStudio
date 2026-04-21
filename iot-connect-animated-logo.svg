@@ -1,62 +1,54 @@
-<svg width="400" height="200" viewBox="0 0 400 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&display=swap');
-      
-      .logo-text {
-        font-family: 'Inter', sans-serif;
-      }
-
-      @keyframes iot-box-anim {
-        0% { transform: scale(0.5); opacity: 0; rotate: -15deg; }
-        70% { transform: scale(1.1); rotate: 5deg; }
-        100% { transform: scale(1); opacity: 1; rotate: 0deg; }
-      }
-
-      @keyframes connect-text-anim {
-        0% { transform: translateX(-10px); opacity: 0; }
-        100% { transform: translateX(0); opacity: 1; }
-      }
-
-      @keyframes subtext-anim {
-        0% { opacity: 0; }
-        100% { opacity: 1; }
-      }
-
-      .iot-group {
-        transform-origin: 100px 100px;
-        animation: iot-box-anim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        animation-delay: 0.2s;
-        opacity: 0;
-      }
-
-      .connect-group {
-        animation: connect-text-anim 0.5s ease-out forwards;
-        animation-delay: 0.4s;
-        opacity: 0;
-      }
-
-      .subtext-group {
-        animation: subtext-anim 0.8s ease-out forwards;
-        animation-delay: 0.7s;
-        opacity: 0;
-      }
-    </style>
-  </defs>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes iot-box-anim {
+      0% { transform: scale(0.5) rotate(-15deg); opacity: 0; }
+      70% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+    @keyframes connect-text-anim {
+      0% { transform: translateX(-10px); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes subtext-anim {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    .logo-text {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      font-weight: 900;
+    }
+    .iot-group {
+      transform-origin: 90px 95px;
+      animation: iot-box-anim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      animation-delay: 0.2s;
+      opacity: 0;
+    }
+    .connect-group {
+      animation: connect-text-anim 0.5s ease-out forwards;
+      animation-delay: 0.4s;
+      opacity: 0;
+    }
+    .subtext-group {
+      animation: subtext-anim 0.8s ease-out forwards;
+      animation-delay: 0.7s;
+      opacity: 0;
+    }
+  </style>
 
   <!-- IoT Block -->
   <g class="iot-group">
     <rect x="60" y="75" width="60" height="40" rx="8" fill="#000000" />
-    <text x="90" y="102" fill="white" font-size="24" font-weight="900" class="logo-text" text-anchor="middle">IoT</text>
+    <text x="90" y="103" fill="#FFFFFF" font-size="24" class="logo-text" text-anchor="middle">IoT</text>
   </g>
 
   <!-- Text Group -->
   <g transform="translate(130, 0)">
     <g class="connect-group">
-      <text x="0" y="105" fill="#0f172a" font-size="32" font-weight="900" class="logo-text" style="letter-spacing: -2px;">Connect</text>
+      <text x="0" y="105" fill="#0f172a" font-size="32" class="logo-text" style="letter-spacing: -2px;">Connect</text>
     </g>
     <g class="subtext-group">
-      <text x="2" y="122" fill="#94a3b8" font-size="8" font-weight="700" class="logo-text" style="text-transform: uppercase; letter-spacing: 2px;">global | connectivity</text>
+      <text x="2" y="122" fill="#94a3b8" font-size="8" font-weight="700" class="logo-text" style="text-transform: uppercase; letter-spacing: 2.2px;">global | connectivity</text>
     </g>
   </g>
 </svg>
