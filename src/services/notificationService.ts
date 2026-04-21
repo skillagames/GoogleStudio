@@ -147,43 +147,47 @@ class NotificationService {
       document.body.appendChild(container);
     }
 
-    // Create the toast (iOS Dynamic Island / Capsule style)
+    // Create the toast (iOS Dynamic Island / Capsule style - LIGHT THEME WITH AMBER ALERT ACCENT)
     const toast = document.createElement('div');
-    // Using Backdrop Filter for Glassmorphism
     toast.style.cssText = `
-      background: rgba(28, 28, 30, 0.85);
+      background: rgba(255, 255, 255, 0.92);
       -webkit-backdrop-filter: blur(20px) saturate(180%);
       backdrop-filter: blur(20px) saturate(180%);
-      color: white;
+      color: #1a1a1a;
       padding: 10px 14px;
-      border-radius: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.1);
+      border-radius: 22px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08), 0 0 0 0.5px rgba(244, 63, 94, 0.25);
       display: flex;
       align-items: center;
       gap: 12px;
       width: 100%;
       max-width: 360px;
-      transform: translateY(-80px) scale(0.9);
+      transform: translateY(-80px) scale(0.95);
       opacity: 0;
-      transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+      transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.4s ease;
       pointer-events: auto;
       user-select: none;
+      cursor: grab;
+      touch-action: none;
     `;
     
-    // Icon (Simplified Logo)
+    // Icon (Improved Modern Logo Style)
     const iconContainer = document.createElement('div');
-    iconContainer.style.cssText = 'width: 32px; height: 32px; background: #000; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 900; border: 0.5px solid rgba(255,255,255,0.2);';
-    iconContainer.innerHTML = '<span style="color:white; transform: scale(0.8);">IoT</span>';
+    iconContainer.style.cssText = 'width: 36px; height: 36px; background: #000; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 900; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative; overflow: hidden;';
+    iconContainer.innerHTML = `
+      <div style="position:absolute; inset:0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);"></div>
+      <span style="color:white; letter-spacing: -0.5px; position: relative; z-index: 1;">IoT</span>
+    `;
 
     const contentEl = document.createElement('div');
-    contentEl.style.cssText = 'display: flex; flex-direction: column; overflow: hidden;';
+    contentEl.style.cssText = 'display: flex; flex-direction: column; overflow: hidden; flex: 1;';
 
     const titleEl = document.createElement('div');
-    titleEl.style.cssText = 'font-weight: 600; font-size: 14px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+    titleEl.style.cssText = 'font-weight: 800; font-size: 13.5px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; color: #f43f5e;';
     titleEl.innerText = title;
 
     const bodyEl = document.createElement('div');
-    bodyEl.style.cssText = 'font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+    bodyEl.style.cssText = 'font-size: 12.5px; color: #4b5563; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;';
     bodyEl.innerText = body;
 
     contentEl.appendChild(titleEl);
@@ -191,6 +195,45 @@ class NotificationService {
     toast.appendChild(iconContainer);
     toast.appendChild(contentEl);
     container.appendChild(toast);
+
+    // Swipe / Dismissal Logic (Swipe Right)
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      isDragging = true;
+      toast.style.transition = 'none';
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      currentX = e.touches[0].clientX - startX;
+      if (currentX > 0) { // Only allow swiping right
+        const rotation = Math.min(currentX * 0.03, 10);
+        toast.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+        toast.style.opacity = `${1 - (currentX / 400)}`;
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      toast.style.transition = 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)';
+      
+      if (currentX > 100) {
+        removeToast('right');
+      } else {
+        toast.style.transform = 'translateY(0) scale(1)';
+        toast.style.opacity = '1';
+        currentX = 0;
+      }
+    };
+
+    toast.addEventListener('touchstart', onTouchStart as any);
+    window.addEventListener('touchmove', onTouchMove as any, { passive: false });
+    window.addEventListener('touchend', onTouchEnd as any);
 
     // Animate in
     requestAnimationFrame(() => {
@@ -201,18 +244,29 @@ class NotificationService {
     });
 
     // Auto-remove
-    const removeToast = () => {
-      toast.style.transform = 'translateY(-10px) scale(0.9)';
+    const removeToast = (direction: 'auto' | 'right' = 'auto') => {
+      if (direction === 'right') {
+        toast.style.transform = `translateX(${window.innerWidth}px) rotate(15deg)`;
+      } else {
+        toast.style.transform = 'translateY(-100px) scale(0.9)';
+      }
+      
       toast.style.opacity = '0';
       setTimeout(() => {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
+        window.removeEventListener('touchmove', onTouchMove as any);
+        window.removeEventListener('touchend', onTouchEnd as any);
       }, 500);
     };
 
-    setTimeout(removeToast, 4500);
+    const timeoutId = setTimeout(() => removeToast(), 5000);
 
-    // Interaction
-    toast.onclick = removeToast;
+    // Click to dismiss fallback
+    toast.onclick = (e) => {
+      if (currentX > 10) return; // Ignore clicks if dragging
+      clearTimeout(timeoutId);
+      removeToast();
+    };
   }
 
   public async notify(options: NotificationOptions) {
@@ -222,10 +276,10 @@ class NotificationService {
     }
 
     const standalone = this.isStandalone();
+    const isTest = options.tag === 'test-notification';
 
-    // 1. If in Standalone/APK mode, show an in-app toast immediately
-    // This solves the "Foreground Suppression" problem where WebViews block system banners while the app is active
-    if (standalone) {
+    // 1. Show in-app toast for Standalone/APK mode OR if it's a test push
+    if (standalone || isTest) {
       this.showForegroundToast(options.title, options.body);
     }
     
