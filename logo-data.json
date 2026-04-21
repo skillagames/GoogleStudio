@@ -1,19 +1,11 @@
 {
-  "id": "iot-connect-pulse",
-  "name": "IoT Connect Logo Animation",
-  "description": "Standard SVG-in-JSON format for mobile and web cross-platform injection.",
-  "dimensions": {
-    "width": 300,
-    "height": 300
+  "asset_name": "IoT Connect Official Logo",
+  "version": "1.0.0",
+  "description": "Animated SVG blueprint perfectly replicating the login and header animation from the IoT Connect app.",
+  "animation_specs": {
+    "iot_block": "Spring-bounce (0.2s delay, stiffness 260, damping 20)",
+    "connect_text": "Slide-fade (0.4s delay, x: -10 to 0)",
+    "subtext": "Fade (0.7s delay)"
   },
-  "theme": {
-    "primary": "#0873E6",
-    "background": "#FFFFFF"
-  },
-  "animation": {
-    "type": "integrated-css",
-    "behavior": "infinite-loop",
-    "speed": "2s-cycle"
-  },
-  "svg_raw": "<svg width=\"300\" height=\"300\" viewBox=\"0 0 300 300\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><style>@keyframes pulse {0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 1; }} @keyframes wave {0% { transform: scale(0.3); opacity: 0; } 20% { opacity: 0.5; } 100% { transform: scale(2.5); opacity: 0; }} .core { transform-origin: center; animation: pulse 2s ease-in-out infinite; fill: #0873E6; } .wave { transform-origin: center; stroke: #0873E6; stroke-width: 2; fill: none; animation: wave 3s linear infinite; } .wave-2 { animation-delay: 1.5s; }</style><circle class=\"wave\" cx=\"150\" cy=\"150\" r=\"40\" /><circle class=\"wave wave-2\" cx=\"150\" cy=\"150\" r=\"40\" /><circle class=\"core\" cx=\"150\" cy=\"150\" r=\"25\" /></svg>"
+  "svg_animated": "<svg width=\"400\" height=\"200\" viewBox=\"0 0 400 200\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><defs><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&amp;display=swap'); .logo-text { font-family: 'Inter', sans-serif; } @keyframes iot-box-anim { 0% { transform: scale(0.5); opacity: 0; rotate: -15deg; } 70% { transform: scale(1.1); rotate: 5deg; } 100% { transform: scale(1); opacity: 1; rotate: 0deg; } } @keyframes connect-text-anim { 0% { transform: translateX(-10px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } } @keyframes subtext-anim { 0% { opacity: 0; } 100% { opacity: 1; } } .iot-group { transform-origin: 90px 95px; animation: iot-box-anim 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; animation-delay: 0.2s; opacity: 0; } .connect-group { animation: connect-text-anim 0.5s ease-out forwards; animation-delay: 0.4s; opacity: 0; } .subtext-group { animation: subtext-anim 0.8s ease-out forwards; animation-delay: 0.7s; opacity: 0; }</style></defs><g class=\"iot-group\"><rect x=\"60\" y=\"75\" width=\"60\" height=\"40\" rx=\"8\" fill=\"#000000\" /><text x=\"90\" y=\"102\" fill=\"white\" font-size=\"24\" font-weight=\"900\" class=\"logo-text\" text-anchor=\"middle\">IoT</text></g><g transform=\"translate(130, 0)\"><g class=\"connect-group\"><text x=\"0\" y=\"105\" fill=\"#0f172a\" font-size=\"32\" font-weight=\"900\" class=\"logo-text\" style=\"letter-spacing: -2px;\">Connect</text></g><g class=\"subtext-group\"><text x=\"2\" y=\"122\" fill=\"#94a3b8\" font-size=\"8\" font-weight=\"700\" class=\"logo-text\" style=\"text-transform: uppercase; letter-spacing: 2px;\">global | connectivity</text></g></g></svg>"
 }
