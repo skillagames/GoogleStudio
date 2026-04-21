@@ -18,8 +18,20 @@ class NotificationService {
     this.checkPermission();
   }
 
+  private isStandalone(): boolean {
+    if (typeof window === 'undefined') return false;
+    const nav = window.navigator as any;
+    const mediaMatch = (window as any).matchMedia && (window as any).matchMedia('(display-mode: standalone)').matches;
+    return mediaMatch || nav.standalone || false;
+  }
+
   private async checkPermission() {
     if (!('Notification' in window)) {
+      // Check if it's a mobile standalone app/APK
+      if (this.isStandalone()) {
+        this.hasPermission = true; // Assume granted in native wrapper if Notification object is missing
+        return;
+      }
       console.warn('This browser does not support desktop notification');
       return;
     }
@@ -27,7 +39,9 @@ class NotificationService {
   }
 
   public async requestPermission(): Promise<boolean> {
+    // Check if we are in a native wrapper (WebToNative, GoNative, etc)
     if (!('Notification' in window)) {
+      if (this.isStandalone()) return true; // Already "installed"
       console.warn('Notifications not supported in this browser');
       return false;
     }
@@ -75,6 +89,10 @@ class NotificationService {
     if (!('Notification' in window)) {
       // Check if it's a mobile device (iOS often needs PWA for notifications)
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // If already in standalone mode (APK/PWA), don't show "PWA Required"
+      if (this.isStandalone()) return 'granted'; 
+      
       if (isMobile) return 'pwa-required';
       return 'unsupported';
     }
@@ -82,7 +100,37 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
+    // Check for common Web-to-Native Bridges (WTN is used by WebToNative)
+    const nativeApp = (window as any).WTN || (window as any).JSBridge || (window as any).Android;
+    if (nativeApp && nativeApp.showNotification) {
+       console.log('Sending via Native Bridge...');
+       try {
+         nativeApp.showNotification(options.title, options.body);
+         return;
+       } catch (e) {
+         console.warn('Native bridge failed, falling back to Web API:', e);
+       }
+    }
+
     if (!('Notification' in window)) {
+      // If no global Notification but in an APK/PWA, try Service Worker directly
+      if (this.isStandalone() && 'serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && 'showNotification' in registration) {
+            console.log('Attempting delivery via ServiceWorkerRegistration (Standalone Mode Fallback)...');
+            await (registration as any).showNotification(options.title, {
+              body: options.body,
+              icon: options.icon || APP_ICON_URL,
+              tag: options.tag || 'iot-connect-standalone'
+            });
+            return;
+          }
+        } catch (swError) {
+          console.error('Standalone SW fallback failed:', swError);
+        }
+      }
+      
       console.error('Notification API not found in this browser.');
       return;
     }
