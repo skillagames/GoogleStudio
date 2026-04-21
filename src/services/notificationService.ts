@@ -20,18 +20,45 @@ class NotificationService {
 
   private isStandalone(): boolean {
     if (typeof window === 'undefined') return false;
+    
+    // 1. Check for explicit PWA standalone mode (Standard)
     const nav = window.navigator as any;
-    const mediaMatch = (window as any).matchMedia && (window as any).matchMedia('(display-mode: standalone)').matches;
-    return mediaMatch || nav.standalone || false;
+    const isPWA = (window as any).matchMedia && (window as any).matchMedia('(display-mode: standalone)').matches;
+    const isStandaloneNav = nav.standalone;
+    
+    // 2. Check for Native Bridges & Flags (WebToNative, GoNative, etc)
+    const hasNativeBridge = !!((window as any).WTN || (window as any).JSBridge || (window as any).Android || 
+                             ((window as any).webkit && (window as any).webkit.messageHandlers));
+    const isNativeAppFlag = (window as any).isNativeApp === true || (window as any).isNative === true;
+    
+    // 3. Advanced UserAgent Sniffing for WebViews
+    // 'wv' is a common marker for Android WebViews.
+    const ua = navigator.userAgent || '';
+    const isWebView = /WebToNative|WebView|wv|Android.*Version\/[.0-9]+|iPhone.*AppleWebKit.*(?!.*Safari)/i.test(ua);
+    
+    // 4. If we are in the AI Studio preview environment (iframe), we are NOT standalone
+    const inIframe = window.self !== window.top;
+    const isAISPreview = window.location.hostname.includes('europe-west2.run.app') || 
+                        window.location.hostname.includes('localhost');
+    
+    if (inIframe && isAISPreview) return false;
+
+    // 5. If we are in a production domain and on mobile, and NOT in a standard Safari/Chrome browser wrapper, 
+    // we are likely in an APK or high-level WebView.
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+    const isProduction = !isAISPreview;
+    const isStandardBrowser = /Safari|Chrome|Firefox/i.test(ua) && !/wv|WebView/i.test(ua);
+
+    return !!(isPWA || isStandaloneNav || hasNativeBridge || isNativeAppFlag || isWebView || (isProduction && isMobile && !isStandardBrowser));
   }
 
   private async checkPermission() {
+    if (this.isStandalone()) {
+      this.hasPermission = true; // Assume granted in native wrapper environment
+      return;
+    }
+
     if (!('Notification' in window)) {
-      // Check if it's a mobile standalone app/APK
-      if (this.isStandalone()) {
-        this.hasPermission = true; // Assume granted in native wrapper if Notification object is missing
-        return;
-      }
       console.warn('This browser does not support desktop notification');
       return;
     }
@@ -39,9 +66,10 @@ class NotificationService {
   }
 
   public async requestPermission(): Promise<boolean> {
-    // Check if we are in a native wrapper (WebToNative, GoNative, etc)
+    // If in a native wrapper/standalone app, permissions are usually handled by the APK shell
+    if (this.isStandalone()) return true;
+
     if (!('Notification' in window)) {
-      if (this.isStandalone()) return true; // Already "installed"
       console.warn('Notifications not supported in this browser');
       return false;
     }
@@ -86,16 +114,24 @@ class NotificationService {
   }
 
   public getPermissionStatus(): 'unsupported' | 'granted' | 'denied' | 'default' | 'pwa-required' {
+    const standalone = this.isStandalone();
+
+    // 1. If we are in an APK/Standalone app, bypass browser checks
+    if (standalone) {
+      if ('Notification' in window) {
+        return Notification.permission as any;
+      }
+      return 'granted';
+    }
+
+    // 2. Browser-specific checks
     if (!('Notification' in window)) {
-      // Check if it's a mobile device (iOS often needs PWA for notifications)
+      // Check if it's a mobile device (iOS/Android browsers usually need PWA mode)
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // If already in standalone mode (APK/PWA), don't show "PWA Required"
-      if (this.isStandalone()) return 'granted'; 
-      
       if (isMobile) return 'pwa-required';
       return 'unsupported';
     }
+    
     return Notification.permission as any;
   }
 
