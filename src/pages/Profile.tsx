@@ -228,13 +228,13 @@ const Profile: React.FC = () => {
                     className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
                     <div className="flex items-center gap-3">
-                      <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : 'text-blue-400')} />
+                      <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : (notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : notificationService.getPermissionStatus() === 'pwa-required' ? 'text-orange-400' : 'text-blue-400'))} />
                       <div className="text-left">
                         <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
                           {notifSuccess ? 'Signal Transmitted' : 'Test Push Pipeline'}
                         </span>
                         <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
-                          Status: {notificationService.getPermissionStatus()}
+                          Status: {notificationService.getPermissionStatus().replace('-', ' ')}
                         </span>
                       </div>
                     </div>
@@ -244,6 +244,20 @@ const Profile: React.FC = () => {
                       <RefreshCw className="h-3 w-3 text-slate-600" />
                     )}
                   </button>
+
+                  {notificationService.getPermissionStatus() === 'pwa-required' && (
+                    <div className="mt-2 text-[8px] font-medium text-orange-500 bg-orange-400/10 px-3 py-2 rounded-lg border border-orange-400/20 space-y-1">
+                      <p><span className="text-orange-400 font-bold uppercase mr-1">PWA Mode Required:</span> This mobile browser requires the app to be installed for notifications.</p>
+                      <p className="opacity-80">Tap the <span className="font-black">Share icon</span> then <span className="font-black underline">"Add to Home Screen"</span> to enable push signals.</p>
+                    </div>
+                  )}
+
+                  {notificationService.getPermissionStatus() === 'unsupported' && (
+                    <p className="mt-2 text-[8px] font-medium text-slate-400 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700">
+                      <span className="text-slate-500 font-bold uppercase mr-1">Legacy Browser:</span>
+                      Your current browser environment does not support the Web Notification API.
+                    </p>
+                  )}
 
                   {notificationService.getPermissionStatus() === 'denied' && (
                     <p className="mt-2 text-[8px] font-medium text-red-500 bg-red-400/10 px-3 py-2 rounded-lg border border-red-400/20">

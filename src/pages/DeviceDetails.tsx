@@ -43,9 +43,9 @@ const DeviceDetails: React.FC = () => {
 
   const PLANS = [
     { id: 0, name: "Starter Pulse", price: "R 79.00", desc: "Basic connectivity for 30 days" },
-    { id: 1, name: "Monthly Booster", price: "R 159.00", desc: "Unlimited data for 30 days" },
+    { id: 1, name: "Monthly Booster", price: "R 159.00", desc: "Unlimited data for 30 days", badge: "Popular" },
     { id: 2, name: "Quarterly Core", price: "R 399.00", desc: "Solid performance for 90 days" },
-    { id: 3, name: "Annual Pro", price: "R 1,299.00", desc: "Best value for power users" }
+    { id: 3, name: "Annual Pro", price: "R 1,299.00", desc: "Best value for power users", badge: "Best Value" }
   ];
 
   useEffect(() => {
@@ -280,48 +280,99 @@ const DeviceDetails: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setShowRenewModal(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
+              style={{ willChange: 'opacity, backdrop-filter' }}
             />
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 10 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-sm rounded-[32px] bg-white p-5 shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ 
+                type: 'spring', 
+                damping: 30, 
+                stiffness: 400,
+                mass: 0.8
+              }}
+              className="relative w-full max-w-sm rounded-[32px] bg-white p-5 shadow-2xl overflow-hidden border border-slate-100"
+              style={{ willChange: 'transform, opacity' }}
             >
-              <div className="flex flex-col items-center text-center">
-                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 mb-3">
-                    <CreditCard className="h-5 w-5" />
-                 </div>
-                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Reactivate Device</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select connectivity payload</p>
+              {/* Decorative Background Elements */}
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-indigo-400/5 blur-3xl" />
+              <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-blue-400/5 blur-3xl" />
+              
+              <div className="relative flex flex-col items-center text-center">
+                 <motion.div 
+                   initial={{ scale: 0.5, opacity: 0 }}
+                   animate={{ scale: 1, opacity: 1 }}
+                   transition={{ delay: 0.1 }}
+                   className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-blue-500 text-white mb-4 shadow-lg shadow-indigo-400/20"
+                 >
+                    <CreditCard className="h-6 w-6" />
+                 </motion.div>
                  
-                 <div className="mt-4 w-full space-y-1.5">
+                 <motion.div
+                   initial={{ y: 10, opacity: 0 }}
+                   animate={{ y: 0, opacity: 1 }}
+                   transition={{ delay: 0.15 }}
+                 >
+                   <h2 className="text-xl font-black text-slate-900 tracking-tight">Expand Connectivity</h2>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select your power profile</p>
+                 </motion.div>
+                 
+                 <motion.div 
+                   className="mt-5 w-full space-y-2"
+                   initial="hidden"
+                   animate="visible"
+                   variants={{
+                     visible: {
+                       transition: {
+                         staggerChildren: 0.05,
+                         delayChildren: 0.2
+                       }
+                     }
+                   }}
+                 >
                     {PLANS.map((plan) => {
                       const { id, ...rest } = plan;
                       return (
-                        <PlanOption 
+                        <motion.div
                           key={id}
-                          {...rest}
-                          active={selectedPlan === id}
-                          onClick={() => setSelectedPlan(id)}
-                        />
+                          variants={{
+                            hidden: { x: -10, opacity: 0 },
+                            visible: { x: 0, opacity: 1 }
+                          }}
+                        >
+                          <PlanOption 
+                            {...rest}
+                            active={selectedPlan === id}
+                            onClick={() => setSelectedPlan(id)}
+                          />
+                        </motion.div>
                       );
                     })}
-                 </div>
+                 </motion.div>
 
-                 <div className="mt-5 w-full space-y-2">
+                 <motion.div 
+                   className="mt-6 w-full space-y-3"
+                   initial={{ y: 20, opacity: 0 }}
+                   animate={{ y: 0, opacity: 1 }}
+                   transition={{ delay: 0.4 }}
+                 >
                    <button 
                     onClick={handleRenew}
                     disabled={isRenewing}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-slate-900/10 transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
+                    className="group relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50"
                    >
-                     {isRenewing ? (
-                       <RefreshCcw className="h-4 w-4 animate-spin" />
-                     ) : (
-                       <>Purchase</>
-                     )}
+                     <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                     <span className="relative z-10 flex items-center gap-2">
+                      {isRenewing ? (
+                        <RefreshCcw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>Confirm Upgrade <CreditCard className="h-3.5 w-3.5" /></>
+                      )}
+                     </span>
                    </button>
                    <button 
                     onClick={() => setShowRenewModal(false)}
@@ -329,7 +380,7 @@ const DeviceDetails: React.FC = () => {
                    >
                      Cancel
                    </button>
-                 </div>
+                 </motion.div>
               </div>
             </motion.div>
           </div>
@@ -408,21 +459,32 @@ interface PlanOptionProps {
   name: string;
   price: string;
   desc: string;
+  badge?: string;
   active?: boolean;
   onClick: () => void;
 }
 
-const PlanOption = ({ name, price, desc, active, onClick }: PlanOptionProps) => (
+const PlanOption = ({ name, price, desc, badge, active, onClick }: PlanOptionProps) => (
   <button 
     onClick={onClick}
     className={cn(
-      "flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all active:scale-[0.98]",
-      active ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/10" : "border-slate-100 bg-white hover:border-slate-200"
+      "relative flex w-full items-center justify-between rounded-2xl border p-3.5 text-left transition-all active:scale-[0.98]",
+      active 
+        ? "border-indigo-400 bg-gradient-to-br from-indigo-400 to-blue-500 text-white shadow-lg shadow-indigo-400/20" 
+        : "border-slate-100 bg-white hover:border-slate-200"
     )}
   >
+    {badge && (
+      <div className={cn(
+        "absolute -top-2 right-4 rounded-full px-2 py-0.5 text-[7px] font-black uppercase tracking-widest shadow-sm",
+        active ? "bg-white text-indigo-500" : "bg-indigo-400 text-white"
+      )}>
+        {badge}
+      </div>
+    )}
     <div className="min-w-0">
-      <h4 className={cn("font-black text-[11px] uppercase tracking-wider truncate", active ? "text-white" : "text-slate-900")}>{name}</h4>
-      <p className={cn("text-[9px] font-medium leading-none mt-1", active ? "text-white/60" : "text-slate-400")}>{desc}</p>
+      <h4 className={cn("font-black text-[10px] uppercase tracking-wider truncate", active ? "text-white" : "text-slate-900")}>{name}</h4>
+      <p className={cn("text-[9px] font-medium leading-none mt-1", active ? "text-indigo-100" : "text-slate-400")}>{desc}</p>
     </div>
     <div className="text-right ml-4 shrink-0">
       <p className={cn("text-xs font-black", active ? "text-white" : "text-slate-900")}>{price}</p>

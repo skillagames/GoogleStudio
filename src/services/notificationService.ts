@@ -46,6 +46,16 @@ class NotificationService {
     if (Notification.permission === 'default') {
       try {
         console.log('Requesting notification permission via user gesture...');
+        
+        // Some mobile browsers require service worker interaction for permissions
+        if ('serviceWorker' in navigator && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration && 'pushManager' in registration) {
+             // Try to trigger via push manager if available
+             await registration.pushManager.getSubscription();
+          }
+        }
+
         // Standard Promise-based API
         const permission = await Notification.requestPermission();
         console.log('Permission result:', permission);
@@ -61,8 +71,13 @@ class NotificationService {
     return this.hasPermission;
   }
 
-  public getPermissionStatus(): 'unsupported' | 'granted' | 'denied' | 'default' {
-    if (!('Notification' in window)) return 'unsupported';
+  public getPermissionStatus(): 'unsupported' | 'granted' | 'denied' | 'default' | 'pwa-required' {
+    if (!('Notification' in window)) {
+      // Check if it's a mobile device (iOS often needs PWA for notifications)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) return 'pwa-required';
+      return 'unsupported';
+    }
     return Notification.permission as any;
   }
 
