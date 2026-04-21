@@ -352,8 +352,6 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
           )}>
             {isExpired ? 'Expired' : isInactive ? 'Inactive' : 'Active'}
           </span>
-          <span className="text-slate-300">•</span>
-          <span className="text-slate-400">ID: {device.serialNumber}</span>
         </div>
       </div >
 

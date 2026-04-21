@@ -27,7 +27,6 @@ export interface Device {
   expirationDate: any;
   planId: string;
   lastUpdated: any;
-  barcode?: string;
 }
 
 export interface UsageStat {
@@ -75,12 +74,10 @@ export const deviceService = {
 
   async seedMasterRegistry() {
     const registryRef = collection(db, 'master_registry');
+    const q = query(registryRef, where('serialNumber', '==', '6001237010828'));
+    const snapshot = await getDocs(q);
     
-    // Seed initial test device
-    const q1 = query(registryRef, where('serialNumber', '==', '6001237010828'));
-    const snapshot1 = await getDocs(q1);
-    
-    const masterData1 = {
+    const masterData = {
       serialNumber: '6001237010828',
       imei: '358762109845321',
       iccid: '89014103211185101234',
@@ -89,32 +86,18 @@ export const deviceService = {
       lastSeeded: serverTimestamp()
     };
 
-    if (snapshot1.empty) {
-      await addDoc(registryRef, { ...masterData1, createdAt: serverTimestamp() });
+    if (snapshot.empty) {
+      await addDoc(registryRef, {
+        ...masterData,
+        createdAt: serverTimestamp()
+      });
+      console.log("Master Registry: New test device provisioned.");
     } else {
-      await updateDoc(doc(db, 'master_registry', snapshot1.docs[0].id), masterData1);
+      // Force update existing record to ensure it has all fields
+      const docId = snapshot.docs[0].id;
+      await updateDoc(doc(db, 'master_registry', docId), masterData);
+      console.log("Master Registry: Test device updated with latest descriptors.");
     }
-
-    // Seed Spar Milk 2l
-    const q2 = query(registryRef, where('serialNumber', '==', '6001008155543'));
-    const snapshot2 = await getDocs(q2);
-    
-    const masterData2 = {
-      serialNumber: '6001008155543',
-      imei: 'N/A',
-      iccid: 'N/A',
-      model: 'Spar Milk 2l',
-      manufacturer: 'Spar',
-      lastSeeded: serverTimestamp()
-    };
-
-    if (snapshot2.empty) {
-      await addDoc(registryRef, { ...masterData2, createdAt: serverTimestamp() });
-    } else {
-      await updateDoc(doc(db, 'master_registry', snapshot2.docs[0].id), masterData2);
-    }
-    
-    console.log("Master Registry: Seeded test descriptors.");
   },
 
   async renewSubscription(deviceId: string, days: number = 30) {
@@ -192,14 +175,6 @@ export const deviceService = {
 
   async seedDevices(userId: string) {
     const dummyDevices = [
-      {
-        name: "Spar Milk 2l",
-        serialNumber: "6001008155543",
-        imei: "N/A",
-        iccid: "N/A",
-        subscriptionStatus: "active",
-        expirationDate: addDays(new Date(), 365),
-      },
       {
         name: "Pro Route X1",
         serialNumber: "SN-98234-X1",
