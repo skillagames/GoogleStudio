@@ -143,7 +143,7 @@ class NotificationService {
     if (!container) {
       container = document.createElement('div');
       container.id = 'iot-toast-container';
-      container.style.cssText = 'position:fixed;top:10px;left:0;right:0;z-index:99999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 12px;';
+      container.style.cssText = 'position:fixed;top:70px;left:0;right:0;z-index:99999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 12px;';
       document.body.appendChild(container);
     }
 
