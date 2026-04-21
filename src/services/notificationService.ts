@@ -149,7 +149,10 @@ class NotificationService {
        const method = nativeApp.showNotification || nativeApp.localNotification || nativeApp.pushNotification || nativeApp.notify;
        if (typeof method === 'function') {
          try {
+           // signature A: (title, body)
            method.call(nativeApp, options.title, options.body);
+           // signature B: ({title, body}) - บาง bridges expect object
+           try { method.call(nativeApp, { title: options.title, body: options.body }); } catch (e) { /* silent fail */ }
            return; 
          } catch (e) {
            console.warn('Native bridge failed:', e);
@@ -157,22 +160,26 @@ class NotificationService {
        }
     }
 
-    const notificationOptions: any = {
+    // Simplified options for mobile/APK compatibility
+    const swOptions: any = {
       body: options.body,
-      icon: options.icon || APP_ICON_URL,
-      tag: options.tag || 'iot-connect-default',
+      tag: options.tag || 'iot-notif',
       vibrate: [200, 100, 200],
-      silent: false, // Ensure sound
-      renotify: true, // Ensure vibration on repeat
-      requireInteraction: true 
+      requireInteraction: false // Disabled for better mobile compatibility
     };
+
+    // Only add icon if we are in a normal browser mode to avoid blocking APK WebViews
+    if (!standalone) {
+      swOptions.icon = options.icon || APP_ICON_URL;
+      swOptions.badge = APP_ICON_URL;
+    }
 
     // 2. Try Service Worker (Mandatory for most Android WebViews)
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
         if (registration && 'showNotification' in registration) {
-          await registration.showNotification(options.title, notificationOptions);
+          await registration.showNotification(options.title, swOptions);
           return;
         }
       } catch (swError) {
@@ -181,26 +188,25 @@ class NotificationService {
     }
 
     // 3. Fallback to standard Browser Notification API
-    if (!('Notification' in window)) {
-      console.error('Notification API not found.');
-      return;
-    }
-
-    // Bypass permission check for standalone
-    if (!standalone && Notification.permission !== 'granted') {
-      if (Notification.permission === 'default') {
-        const granted = await this.requestPermission();
-        if (!granted) return;
-      } else {
-        return;
+    if (typeof Notification !== 'undefined') {
+      try {
+        if (!standalone && Notification.permission !== 'granted') {
+          await this.requestPermission();
+        }
+        
+        // Final attempt with full options for desktop browsers
+        const fullOptions = {
+          ...swOptions,
+          icon: options.icon || APP_ICON_URL,
+          silent: false,
+          renotify: true
+        };
+        
+        const n = new Notification(options.title, fullOptions);
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (error) {
+        console.error('Final fallback failed:', error);
       }
-    }
-
-    try {
-      const n = new Notification(options.title, notificationOptions);
-      n.onclick = () => { window.focus(); n.close(); };
-    } catch (error) {
-      console.error('Notification delivery failed:', error);
     }
   }
   public async checkDeviceExpirations(userId: string) {
