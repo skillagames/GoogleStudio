@@ -8,8 +8,8 @@ export interface NotificationOptions {
   tag?: string;
 }
 
-// Custom SVG Data URL matching the app's "IoT" logo (Black rounded square with white bold text)
-const APP_ICON_URL = `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSI4MCIgZmlsbD0iYmxhY2siLz48dGV4dCB4PSIyNTYiIHk9IjI3NSIgZm9udC1mYW1pbHk9InN5c3RlbS11aSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSIyNDAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5Jb1Q8L3RleHQ+PC9zdmc+`;
+// Use a remote URL for the icon as some WebViews block local/data URLs in notifications
+const APP_ICON_URL = 'https://picsum.photos/seed/iot/192/192';
 
 class NotificationService {
   private hasPermission: boolean = false;
@@ -136,44 +136,51 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
-    // Check for common Web-to-Native Bridges (WTN is used by WebToNative)
-    const nativeApp = (window as any).WTN || (window as any).JSBridge || (window as any).Android;
-    if (nativeApp && nativeApp.showNotification) {
-       console.log('Sending via Native Bridge...');
-       try {
-         nativeApp.showNotification(options.title, options.body);
-         return;
-       } catch (e) {
-         console.warn('Native bridge failed, falling back to Web API:', e);
+    const standalone = this.isStandalone();
+    
+    // 1. Try Native Bridges (WebToNative, etc)
+    const nativeApp = (window as any).WTN || (window as any).TN || (window as any).JSBridge || (window as any).Android;
+    if (nativeApp) {
+       const method = nativeApp.showNotification || nativeApp.localNotification || nativeApp.pushNotification || nativeApp.notify;
+       if (typeof method === 'function') {
+         try {
+           method.call(nativeApp, options.title, options.body);
+           return; 
+         } catch (e) {
+           console.warn('Native bridge failed:', e);
+         }
        }
     }
 
-    if (!('Notification' in window)) {
-      // If no global Notification but in an APK/PWA, try Service Worker directly
-      if (this.isStandalone() && 'serviceWorker' in navigator) {
-        try {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration && 'showNotification' in registration) {
-            console.log('Attempting delivery via ServiceWorkerRegistration (Standalone Mode Fallback)...');
-            await (registration as any).showNotification(options.title, {
-              body: options.body,
-              icon: options.icon || APP_ICON_URL,
-              tag: options.tag || 'iot-connect-standalone'
-            });
-            return;
-          }
-        } catch (swError) {
-          console.error('Standalone SW fallback failed:', swError);
+    // 2. If Standalone (APK/PWA), try Service Worker IMMEDIATELY
+    // On many Android WebViews, the global Notification object is broken but ServiceWorker works.
+    if (standalone && 'serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && 'showNotification' in registration) {
+          await (registration as any).showNotification(options.title, {
+            body: options.body,
+            icon: options.icon || APP_ICON_URL,
+            badge: APP_ICON_URL,
+            tag: options.tag || 'iot-connect-standalone',
+            vibrate: [200, 100, 200],
+            requireInteraction: true
+          });
+          return;
         }
+      } catch (swError) {
+        console.warn('Standalone SW notification failed:', swError);
       }
-      
-      console.error('Notification API not found in this browser.');
+    }
+
+    // 3. Fallback to standard Browser Notification API
+    if (!('Notification' in window)) {
+      console.error('Notification API not found.');
       return;
     }
 
-    // Standard check before sending
-    if (Notification.permission !== 'granted') {
-      console.warn('Notification permission state:', Notification.permission);
+    // Bypass permission check for standalone as we assume it's granted
+    if (!standalone && Notification.permission !== 'granted') {
       if (Notification.permission === 'default') {
         const granted = await this.requestPermission();
         if (!granted) return;
@@ -183,58 +190,35 @@ class NotificationService {
     }
 
     try {
-      console.log('--- NOTIFICATION DEBUG ---');
-      console.log('Title:', options.title);
-      console.log('Body:', options.body);
-      
-      const notificationOptions: NotificationOptions & any = {
+      const notificationOptions: any = {
         body: options.body,
         icon: options.icon || APP_ICON_URL,
         tag: options.tag || 'iot-connect-default',
         badge: APP_ICON_URL,
         vibrate: [200, 100, 200],
-        silent: false,
-        renotify: true,
         requireInteraction: true 
       };
 
-      // Try Service Worker registration first (more reliable on mobile/standalone)
-      let swSuccess = false;
+      // Try Service Worker registration again for standard browser
       if ('serviceWorker' in navigator) {
         try {
-          const registration = await navigator.serviceWorker.getRegistration();
+          const registration = await navigator.serviceWorker.ready;
           if (registration && 'showNotification' in registration) {
-            console.log('Attempting delivery via ServiceWorkerRegistration...');
             await registration.showNotification(options.title, notificationOptions);
-            swSuccess = true;
-            console.log('SW Notification sent.');
+            return;
           }
         } catch (swError) {
-          console.warn('SW notification failed, falling back:', swError);
+          console.warn('SW notification fallback failed:', swError);
         }
       }
 
-      // If SW failed or wasn't available, use the standard constructor
-      if (!swSuccess) {
-        console.log('Attempting delivery via new Notification() constructor...');
-        const n = new Notification(options.title, notificationOptions);
-        n.onclick = () => {
-          window.focus();
-          n.close();
-        };
-        console.log('Constructor Notification instance created.');
-      }
-      
-      // Also trigger haptic feedback if available (for mobile web)
-      if ('vibrate' in navigator) {
-        navigator.vibrate([100, 50, 100]);
-      }
-
+      // Final desktop fallback
+      new Notification(options.title, notificationOptions);
+      if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
     } catch (error) {
-      console.error('CRITICAL NOTIFICATION FAILURE:', error);
+      console.error('Notification delivery failed:', error);
     }
   }
-
   public async checkDeviceExpirations(userId: string) {
     if (!userId) return;
 
