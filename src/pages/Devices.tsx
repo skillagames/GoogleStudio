@@ -93,10 +93,15 @@ const Devices: React.FC = () => {
                       key={status}
                       onClick={() => setStatusFilter(status)}
                       className={cn(
-                        "flex-1 rounded-xl py-2.5 text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                        "flex-1 rounded-xl py-2.5 text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border",
                         statusFilter === status 
-                          ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10" 
-                          : "bg-white border border-slate-100 text-slate-400 hover:text-slate-600"
+                          ? cn(
+                              status === 'all' && "bg-slate-900 border-slate-900 text-white shadow-slate-900/10",
+                              status === 'active' && "bg-emerald-50 border-emerald-200 text-emerald-600 shadow-emerald-500/5",
+                              status === 'expired' && "bg-red-50 border-red-200 text-red-600 shadow-red-500/5",
+                              status === 'inactive' && "bg-slate-50 border-slate-200 text-slate-500 shadow-none"
+                            )
+                          : "bg-white border-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-50/50"
                       )}
                     >
                       {status === 'inactive' ? 'Inactive' : status}

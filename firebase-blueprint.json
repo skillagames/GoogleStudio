@@ -26,7 +26,8 @@
         "subscriptionStatus": { "type": "string", "enum": ["active", "expired"] },
         "expirationDate": { "type": "string", "format": "date-time" },
         "planId": { "type": "string" },
-        "lastUpdated": { "type": "string", "format": "date-time" }
+        "lastUpdated": { "type": "string", "format": "date-time" },
+        "autoRenew": { "type": "boolean" }
       },
       "required": ["serialNumber", "imei", "iccid", "name", "ownerId", "subscriptionStatus", "expirationDate"]
     },

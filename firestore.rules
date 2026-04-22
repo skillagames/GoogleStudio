@@ -54,7 +54,8 @@ service cloud.firestore {
                data.name is string && data.name.size() <= 100 &&
                data.ownerId is string &&
                data.subscriptionStatus in ['active', 'expired', 'inactive'] &&
-               (data.subscriptionStatus == 'inactive' ? true : data.expirationDate is timestamp);
+               (data.subscriptionStatus == 'inactive' ? true : data.expirationDate is timestamp) &&
+               (data.get('autoRenew', false) is bool);
       }
 
       allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());

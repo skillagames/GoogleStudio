@@ -43,6 +43,12 @@ const Alerts: React.FC = () => {
     await loadAlerts();
   };
 
+  const handleDismissAll = () => {
+    const ids = alerts.map(a => a.id);
+    notificationService.dismissAllAlerts(ids);
+    setAlerts([]);
+  };
+
   if (loading) return (
     <div className="flex h-64 items-center justify-center">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-black border-t-transparent"></div>
@@ -51,9 +57,28 @@ const Alerts: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-32">
-      <header>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Security Alerts</h1>
-        <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Critical Connectivity Status</p>
+      <header className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">Scanner Alerts</h1>
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Critical Connectivity Status</p>
+        </div>
+        
+        <button 
+          onClick={alerts.length > 0 ? handleDismissAll : handleRescan}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-[18px] transition-all active:scale-90",
+            alerts.length > 0 
+              ? "bg-red-50 text-red-500 hover:bg-red-100" 
+              : "bg-emerald-50/50 text-emerald-500 hover:bg-emerald-100/50"
+          )}
+          title={alerts.length > 0 ? "Clear all alerts" : "Refresh signals"}
+        >
+          {alerts.length > 0 ? (
+            <Trash2 className="h-5 w-5" />
+          ) : (
+            <RefreshCcw className="h-5 w-5" />
+          )}
+        </button>
       </header>
 
       <div className="grid gap-3 p-1 -m-1">
@@ -138,22 +163,34 @@ const Alerts: React.FC = () => {
               </motion.div>
             ))
           ) : (
-          <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-[32px] bg-slate-50 text-slate-200 border border-slate-100 shadow-inner">
-              <Bell className="h-10 w-10" />
+          <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+            <div className="relative group">
+              {/* Soft success glow */}
+              <motion.div 
+                animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ repeat: Infinity, duration: 4 }}
+                className="absolute inset-x-0 -inset-y-4 bg-emerald-400/20 blur-2xl rounded-full" 
+              />
+              <div className="relative flex h-24 w-24 items-center justify-center rounded-[36px] bg-emerald-50 text-emerald-500 border-2 border-emerald-100/50 shadow-xl shadow-emerald-500/10 transition-transform group-hover:scale-105 duration-500">
+                <Bell className="h-10 w-10" />
+                {/* Status indicator dot */}
+                <div className="absolute top-6 right-6 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Queue Inhibited</p>
-              <p className="text-[10px] text-slate-400 font-medium max-w-[200px] leading-relaxed">
-                Active notification buffer is currently empty. Dismissed event logs are cached until the next manual protocol re-scan.
+
+            <div className="space-y-1.5 mt-4">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">All Clear</h3>
+              <p className="text-[10px] text-slate-500 font-bold max-w-[220px] leading-relaxed mx-auto">
+                You've cleared all your alerts. Refresh the page if you want to check for any new device updates.
               </p>
             </div>
+
             <button 
               onClick={handleRescan}
-              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-primary hover:opacity-80"
+              className="group flex items-center gap-3 rounded-[20px] bg-slate-900 px-7 py-3.5 text-[10px] font-black uppercase tracking-[0.15em] text-white shadow-2xl shadow-slate-900/20 transition-all hover:bg-slate-800 active:scale-95 mt-6"
             >
-              <RefreshCcw className="h-3 w-3" />
-              Re-scan Cluster
+              <RefreshCcw className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+              Check for Alerts
             </button>
           </div>
         )}
@@ -167,12 +204,21 @@ const Alerts: React.FC = () => {
            <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-4">
              Detected {alerts.length} device(s) requiring immediate attention. Tap on an alert to initiate the renewal protocol and restore full telemetry sync.
            </p>
-           <button 
-            onClick={() => navigate('/devices')}
-            className="w-full rounded-xl bg-white/10 py-2.5 text-[9px] font-black uppercase tracking-widest text-white hover:bg-white/20 transition-colors"
-           >
-             Manage Subscription Matrix
-           </button>
+           <div className="flex flex-col gap-2">
+             <button 
+              onClick={() => navigate('/devices')}
+              className="w-full rounded-xl bg-white/10 py-2.5 text-[9px] font-black uppercase tracking-widest text-white hover:bg-white/20 transition-colors"
+             >
+               Manage Devices
+             </button>
+             <button 
+              onClick={handleDismissAll}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 py-2.5 text-[9px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/20 transition-colors"
+             >
+               <Trash2 className="h-3 w-3" />
+               Dismiss All Active Signals
+             </button>
+           </div>
         </div>
       )}
     </div>

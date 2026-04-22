@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
           <StatCard 
             label="EXPIRED" 
             value={devices.filter(d => d.subscriptionStatus === 'expired').length.toString()} 
-            color="orange" 
+            color="red" 
             icon={AlertCircle}
             isActive={filter === 'expired'}
             onClick={() => setFilter(filter === 'expired' ? null : 'expired')}
@@ -294,7 +294,7 @@ const Dashboard: React.FC = () => {
                  <div className="space-y-4">
                     <LogItem icon={Zap} title="Telemetry Pulse" desc="Device Pro Route X1 transmitted usage metrics" time="2m ago" color="blue" />
                     <LogItem icon={ShieldCheck} title="Service Renewal" desc="Field Monitor M1 subscription auto-renewed" time="1h ago" color="emerald" />
-                    <LogItem icon={AlertCircle} title="Low Signal" desc="Enterprise Hub G5 reporting intermittent latency" time="3h ago" color="orange" />
+                    <LogItem icon={AlertCircle} title="Low Signal" desc="Enterprise Hub G5 reporting intermittent latency" time="3h ago" color="red" />
                  </div>
               </div>
            </div>
@@ -304,13 +304,13 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const LogItem = ({ icon: Icon, title, desc, time, color }: { icon: any, title: string, desc: string, time: string, color: 'blue' | 'emerald' | 'orange' }) => (
+const LogItem = ({ icon: Icon, title, desc, time, color }: { icon: any, title: string, desc: string, time: string, color: 'blue' | 'emerald' | 'red' }) => (
   <div className="flex gap-4">
      <div className={cn(
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100",
         color === 'blue' && "text-blue-500",
         color === 'emerald' && "text-emerald-500",
-        color === 'orange' && "text-orange-500"
+        color === 'red' && "text-red-500"
      )}>
         <Icon className="h-4 w-4" />
      </div>
@@ -360,34 +360,41 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
   );
 };
 
-const StatCard = ({ label, value, color, icon: Icon, isActive, onClick }: { label: string; value: string; color: 'emerald' | 'orange' | 'slate'; icon: any; isActive: boolean; onClick: () => void }) => (
+const StatCard = ({ label, value, color, icon: Icon, isActive, onClick }: { label: string; value: string; color: 'emerald' | 'red' | 'slate'; icon: any; isActive: boolean; onClick: () => void }) => (
   <button 
     onClick={onClick}
     className={cn(
       "relative overflow-hidden rounded-[20px] border transition-all text-left p-2.5 shadow-sm active:scale-95",
       isActive 
-        ? (color === 'emerald' ? "border-emerald-500 bg-emerald-50/50 ring-1 ring-inset ring-emerald-500" : 
-           color === 'orange' ? "border-orange-500 bg-orange-50/50 ring-1 ring-inset ring-orange-500" :
-           "border-slate-500 bg-slate-50/50 ring-1 ring-inset ring-slate-500") 
+        ? (color === 'emerald' ? "border-emerald-200 bg-emerald-50 shadow-emerald-500/5" : 
+           color === 'red' ? "border-red-200 bg-red-50 shadow-red-500/5" :
+           "border-slate-200 bg-slate-50 shadow-none") 
         : "border-slate-100 bg-white"
     )}
   >
     <div className={cn(
-      "absolute -right-2 -top-2 h-8 w-8 opacity-[0.03]",
-      color === 'emerald' ? "text-emerald-500" : color === 'orange' ? "text-orange-500" : "text-slate-500"
+      "absolute -right-2 -top-2 h-8 w-8",
+      isActive ? "opacity-10" : "opacity-[0.03]",
+      color === 'emerald' ? "text-emerald-500" : color === 'red' ? "text-red-500" : "text-slate-500"
     )}>
       <Icon className="h-full w-full" />
     </div>
-    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-    <div className="flex items-center gap-1.5 text-slate-900">
+    <p className={cn(
+      "text-[7px] font-black uppercase tracking-[0.2em]",
+      isActive 
+        ? (color === 'emerald' ? "text-emerald-600/60" : color === 'red' ? "text-red-600/60" : "text-slate-500/60")
+        : "text-slate-400"
+    )}>{label}</p>
+    <div className="flex items-center gap-1.5 leading-none mt-0.5">
       <span className={cn(
         "text-sm font-black tracking-tighter",
-        color === 'orange' && !isActive && "text-orange-600",
-        color === 'slate' && !isActive && "text-slate-600"
+        isActive 
+          ? (color === 'emerald' ? "text-emerald-600" : color === 'red' ? "text-red-600" : "text-slate-600")
+          : "text-slate-900"
       )}>{value}</span>
       <div className={cn(
-        "h-1.5 w-1.5 rounded-full",
-        color === 'emerald' ? "bg-emerald-400" : color === 'orange' ? "bg-orange-500" : "bg-slate-400"
+        "h-1.5 w-1.5 rounded-full shadow-sm",
+        color === 'emerald' ? "bg-emerald-400" : color === 'red' ? "bg-red-500" : "bg-slate-400"
       )} />
     </div>
   </button>

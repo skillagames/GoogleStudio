@@ -15,7 +15,8 @@ import {
   AlertTriangle,
   CreditCard,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Repeat
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -38,6 +39,7 @@ const DeviceDetails: React.FC = () => {
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
+  const [isUpdatingAutoRenew, setIsUpdatingAutoRenew] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(0);
 
@@ -92,6 +94,19 @@ const DeviceDetails: React.FC = () => {
       console.error(err);
     } finally {
       setIsRenewing(false);
+    }
+  };
+
+  const handleToggleAutoRenew = async () => {
+    if (!device) return;
+    setIsUpdatingAutoRenew(true);
+    try {
+      await deviceService.toggleAutoRenew(id!, !device.autoRenew);
+      await loadData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUpdatingAutoRenew(false);
     }
   };
 
@@ -162,16 +177,34 @@ const DeviceDetails: React.FC = () => {
                   {isInactive ? 'Pending Activation' : formatDate(device.expirationDate, 'MMMM dd, yyyy')}
                 </p>
              </div>
-             {(isExpired || isInactive) && (
+             {(isExpired || isInactive) ? (
                 <button 
                   onClick={() => setShowRenewModal(true)}
                   className={cn(
                     "flex items-center gap-2 rounded-xl px-5 py-2.5 text-[9px] font-black text-white transition-all active:scale-95 shadow-lg whitespace-nowrap",
-                    isInactive ? "bg-slate-900 shadow-slate-900/20" : "bg-orange-500 shadow-orange-500/20"
+                    isInactive ? "bg-slate-900 shadow-slate-900/20" : "bg-red-500 shadow-red-500/20"
                   )}
                 >
                   <RefreshCcw className="h-3.5 w-3.5" /> 
                   {isInactive ? 'Activate' : 'Renew Plan'}
+                </button>
+             ) : (
+                <button 
+                  onClick={handleToggleAutoRenew}
+                  disabled={isUpdatingAutoRenew}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2.5 text-[9px] font-black transition-all active:scale-95 shadow-lg whitespace-nowrap border",
+                    device.autoRenew 
+                      ? "bg-emerald-500 text-white border-transparent shadow-emerald-500/20" 
+                      : "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-500/5 hover:bg-emerald-100/50"
+                  )}
+                >
+                  {isUpdatingAutoRenew ? (
+                    <RefreshCcw className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Repeat className="h-3.5 w-3.5" />
+                  )}
+                  {device.autoRenew ? 'Auto-Renew Active' : 'Enable Auto-Renew'}
                 </button>
              )}
           </div>

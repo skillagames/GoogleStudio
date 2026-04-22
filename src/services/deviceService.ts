@@ -27,6 +27,7 @@ export interface Device {
   expirationDate: any;
   planId: string;
   lastUpdated: any;
+  autoRenew?: boolean;
 }
 
 export interface UsageStat {
@@ -128,6 +129,14 @@ export const deviceService = {
         timestamp 
       } as UsageStat;
     }).reverse();
+  },
+
+  async toggleAutoRenew(deviceId: string, enabled: boolean) {
+    const deviceRef = doc(db, 'devices', deviceId);
+    await updateDoc(deviceRef, {
+      autoRenew: enabled,
+      lastUpdated: serverTimestamp(),
+    });
   },
 
   async getAllDevices() {

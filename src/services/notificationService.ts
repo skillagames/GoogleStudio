@@ -8,8 +8,9 @@ export interface NotificationOptions {
   tag?: string;
 }
 
-// Use a remote URL for the icon as some WebViews block local/data URLs in notifications
-const APP_ICON_URL = 'https://picsum.photos/seed/iot/192/192';
+// High-fidelity SVG Data URL for the IoT App Icon (Black background, bold white "IoT" text)
+// This uses a robust vector format that scales perfectly for system notifications.
+const APP_ICON_URL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiB2aWV3Qm94PSIwIDAgMTkyIDE5MiI+PHJlY3Qgd2lkdGg9IjE5MiIgaGVpZ2h0PSIxOTIiIHJ4PSI0MCIgZmlsbD0iYmxhY2siLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjcwIiBmaWxsPSJ3aGl0ZSI+SW9UPC90ZXh0Pjwvc3ZnPg==';
 
 class NotificationService {
   private hasPermission: boolean = false;
@@ -147,47 +148,46 @@ class NotificationService {
       document.body.appendChild(container);
     }
 
-    // Create the toast (iOS Dynamic Island / Capsule style - LIGHT THEME WITH AMBER ALERT ACCENT)
+    // Create the toast (iOS Notification Style - LIGHT THEME)
     const toast = document.createElement('div');
     toast.style.cssText = `
-      background: rgba(255, 255, 255, 0.7);
-      -webkit-backdrop-filter: blur(25px) saturate(200%);
-      backdrop-filter: blur(25px) saturate(200%);
-      color: #1a1a1a;
-      padding: 10px 14px;
-      border-radius: 22px;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05), 0 0 0 0.5px rgba(244, 63, 94, 0.15);
+      background: rgba(242, 242, 247, 0.2);
+      -webkit-backdrop-filter: blur(45px) saturate(210%);
+      backdrop-filter: blur(45px) saturate(210%);
+      color: #1c1c1e;
+      padding: 12px 16px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.1);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
       width: 100%;
       max-width: 360px;
-      transform: translateY(-80px) scale(0.95);
+      transform: translateY(-80px) scale(0.96);
       opacity: 0;
-      transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.4s ease;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
       pointer-events: auto;
       user-select: none;
       cursor: grab;
       touch-action: none;
     `;
     
-    // Icon (Improved Modern Logo Style)
+    // Icon (iOS Style App Icon)
     const iconContainer = document.createElement('div');
-    iconContainer.style.cssText = 'width: 36px; height: 36px; background: #000; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 900; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative; overflow: hidden;';
+    iconContainer.style.cssText = 'width: 38px; height: 38px; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 900; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: relative; overflow: hidden;';
     iconContainer.innerHTML = `
-      <div style="position:absolute; inset:0; background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);"></div>
-      <span style="color:white; letter-spacing: -0.5px; position: relative; z-index: 1;">IoT</span>
+      <span style="color:white; letter-spacing: -0.8px; transform: scale(1.1); position: relative; z-index: 1;">IoT</span>
     `;
 
     const contentEl = document.createElement('div');
     contentEl.style.cssText = 'display: flex; flex-direction: column; overflow: hidden; flex: 1;';
 
     const titleEl = document.createElement('div');
-    titleEl.style.cssText = 'font-weight: 800; font-size: 13.5px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; color: #f43f5e;';
+    titleEl.style.cssText = 'font-weight: 700; font-size: 14px; letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; color: #f43f5e;';
     titleEl.innerText = title;
 
     const bodyEl = document.createElement('div');
-    bodyEl.style.cssText = 'font-size: 12.5px; color: #4b5563; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;';
+    bodyEl.style.cssText = 'font-size: 13px; color: #3a3a3c; font-weight: 400; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;';
     bodyEl.innerText = body;
 
     contentEl.appendChild(titleEl);
@@ -415,6 +415,23 @@ class NotificationService {
       dismissed.push(alertId);
       localStorage.setItem('dismissed_alerts', JSON.stringify(dismissed));
       // Notify other parts of the app that alerts have changed
+      window.dispatchEvent(new CustomEvent('alerts_updated'));
+    }
+  }
+
+  public dismissAllAlerts(alertIds: string[]) {
+    const dismissed = this.getDismissedAlerts();
+    let updated = false;
+    
+    alertIds.forEach(id => {
+      if (!dismissed.includes(id)) {
+        dismissed.push(id);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      localStorage.setItem('dismissed_alerts', JSON.stringify(dismissed));
       window.dispatchEvent(new CustomEvent('alerts_updated'));
     }
   }

@@ -98,7 +98,7 @@ const Scanner: React.FC = () => {
         { facingMode: "environment" },
         {
           fps: 10,
-          qrbox: { width: 280, height: 280 },
+          // Removed qrbox to eliminate the library's default white-cornered overlay
         },
         (decodedText) => {
           handleDetected(decodedText);
@@ -137,12 +137,12 @@ const Scanner: React.FC = () => {
     let timeoutId: any;
     
     const syncScanner = async () => {
-      if (activeTab === 'scan' && !scanResult) {
+      if (activeTab === 'scan' && !scanResult && !error) {
         // Short delay to ensure DOM is ready and previous state finished
         timeoutId = setTimeout(() => {
           startScanner();
         }, 100);
-      } else {
+      } else if (activeTab === 'manual' || scanResult) {
         await stopScanner();
       }
     };
@@ -153,13 +153,22 @@ const Scanner: React.FC = () => {
       if (timeoutId) clearTimeout(timeoutId);
       stopScanner();
     };
-  }, [activeTab, scanResult]);
+  }, [activeTab, scanResult, error]);
 
   const handleDetected = async (code: string) => {
     try {
       const hardwareData = await deviceService.verifyHardware(code);
       if (!hardwareData) {
-        setError("Core Recon Failed: Doesn't recognize device.");
+        // Stop camera if it's currently scanning
+        if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+          try {
+            await html5QrCodeRef.current.stop();
+            setCameraActive(false);
+          } catch (err) {
+            console.error("Failed to stop scanner on error", err);
+          }
+        }
+        setError("Hardware Check Failed: Device not recognized");
         setScanResult(null);
         return;
       }
@@ -233,117 +242,12 @@ const Scanner: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-[340px]">
           <AnimatePresence mode="wait">
-            {!scanResult ? (
-              <motion.div 
-                key={activeTab}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="w-full relative aspect-[1/1.1]"
-              >
-                {activeTab === 'scan' ? (
-                  <div className="h-full w-full overflow-hidden rounded-[40px] border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/50">
-                     <div id={scannerId} className="h-full w-full object-cover grayscale-[0.5]" />
-                     
-                     {!cameraActive && !error && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white">
-                          <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Initializing Core...</span>
-                       </div>
-                     )}
-
-                     {error && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white px-8 text-center">
-                          <AlertCircle className="h-8 w-8 text-red-500" />
-                          <span className="text-[13px] font-bold text-slate-900 leading-snug">{error}</span>
-                          
-                          <div className="flex flex-col gap-2 w-full mt-4">
-                            <button 
-                              onClick={() => {
-                                setError(null);
-                                startScanner();
-                              }}
-                              className="bg-slate-900 text-white rounded-[16px] py-3.5 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform"
-                            >
-                              Try Again
-                            </button>
-                            <button 
-                              onClick={() => setActiveTab('manual')}
-                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 underline"
-                            >
-                              Manual Entry
-                            </button>
-                          </div>
-                       </div>
-                     )}
-
-                     {cameraActive && (
-                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                         <motion.div 
-                            animate={{ scale: [1, 1.05, 1], borderColor: ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.1)'] }}
-                            transition={{ repeat: Infinity, duration: 2 }}
-                            className="h-56 w-56 rounded-[48px] border-2 border-slate-900/10 shadow-[0_0_0_9999px_rgba(255,255,255,0.4)]"
-                         />
-                         <div className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 animate-[scan-line_2s_linear_infinite] bg-emerald-400 shadow-[0_0_15px_#10b981]" />
-                       </div>
-                     )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleManualSubmit} className="h-full w-full rounded-[40px] border-2 border-slate-200 bg-white p-7 flex flex-col justify-center items-center text-center shadow-xl shadow-slate-200/50 overflow-hidden">
-                     <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-50 text-slate-900 mb-4 shrink-0">
-                        <Keyboard className="h-6 w-6" />
-                     </div>
-                     <div className="space-y-0.5 mb-6">
-                        <h3 className="text-lg font-black tracking-tight text-slate-900 leading-none">Manual Entry</h3>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Transmit serial code</p>
-                     </div>
-                     <div className="w-full space-y-3">
-                        <div className="relative group">
-                          <input 
-                            type="text"
-                            placeholder="SN-XXXX-XXXX"
-                            value={manualCode}
-                            onChange={(e) => {
-                              setManualCode(e.target.value.toUpperCase());
-                              if (error) setError(null);
-                            }}
-                            className={cn(
-                              "w-full rounded-[18px] bg-slate-50 border-2 px-5 py-3.5 text-sm font-bold font-mono tracking-widest text-slate-900 placeholder:text-slate-400/40 focus:bg-white focus:outline-none transition-all",
-                              error ? "border-red-500 bg-red-50/10 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-slate-100 focus:border-slate-900 shadow-none"
-                            ) }
-                          />
-                        </div>
-
-                        <AnimatePresence>
-                          {error && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              className="flex items-center justify-center gap-2 px-2"
-                            >
-                               <AlertCircle className="h-3 w-3 text-red-500" />
-                               <span className="text-[10px] font-black uppercase tracking-tight text-red-500">Unrecognized Device ID</span>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        <button 
-                          type="submit"
-                          disabled={!manualCode.trim()}
-                          className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-slate-900 text-[10px] font-black uppercase tracking-[0.15em] text-white transition-all active:scale-95 disabled:opacity-30 shadow-xl shadow-slate-900/10"
-                        >
-                          Verify Hardware <ArrowRight className="h-4 w-4" />
-                        </button>
-                     </div>
-                  </form>
-                )}
-              </motion.div>
-            ) : (
+            {scanResult ? (
               <motion.div 
                 key="result"
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
                 className="w-full relative aspect-[1/1.1]"
               >
                 <div className="h-full w-full rounded-[40px] border-2 border-slate-900 bg-white p-6 flex flex-col shadow-2xl shadow-slate-900/15 overflow-hidden">
@@ -421,6 +325,128 @@ const Scanner: React.FC = () => {
                   </div>
                 </div>
               </motion.div>
+            ) : activeTab === 'scan' ? (
+              <motion.div 
+                key="scan"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="w-full relative aspect-[1/1.1]"
+              >
+                <div className="h-full w-full overflow-hidden rounded-[40px] border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/50 relative">
+                   <div id={scannerId} className={cn("h-full w-full object-cover grayscale-[0.5]", (!cameraActive || error) && "opacity-0")} />
+                   
+                   {!cameraActive && !error && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-white p-7 text-center">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-50 text-slate-900 mb-4 shrink-0 animate-in fade-in zoom-in duration-300">
+                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+                        </div>
+                        <div className="space-y-0.5">
+                           <h3 className="text-lg font-black tracking-tight text-slate-900 leading-none">Starting Camera</h3>
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Preparing scanner environment...</p>
+                        </div>
+                     </div>
+                   )}
+
+                   {error && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-white p-7 text-center z-20">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-red-50 text-red-500 mb-4 shrink-0 animate-in fade-in zoom-in duration-300">
+                           <AlertCircle className="h-6 w-6" />
+                        </div>
+                        <div className="space-y-0.5 mb-6">
+                           <h3 className="text-lg font-black tracking-tight text-slate-900 leading-none">Registry Error</h3>
+                           <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1">{error}</p>
+                        </div>
+                        
+                        <div className="w-full space-y-3">
+                          <button 
+                            onClick={() => {
+                              setError(null);
+                              // startScanner will be triggered by useEffect
+                            }}
+                            className="w-full rounded-[18px] bg-slate-900 py-3.5 text-[10px] font-black uppercase tracking-[0.15em] text-white transition-all active:scale-95 shadow-xl shadow-slate-950/10"
+                          >
+                            Restart Scanner
+                          </button>
+                          <button 
+                            onClick={() => setActiveTab('manual')}
+                            className="w-full text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+                          >
+                            Manual Entry Protocol
+                          </button>
+                        </div>
+                     </div>
+                   )}
+
+                   {cameraActive && !error && (
+                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                       <motion.div 
+                          animate={{ scale: [1, 1.05, 1], borderColor: ['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.1)'] }}
+                          transition={{ repeat: Infinity, duration: 2 }}
+                          className="h-56 w-56 rounded-[48px] border-2 border-slate-900/10 shadow-[0_0_0_9999px_rgba(255,255,255,0.4)]"
+                       />
+                       <div className="absolute top-1/2 left-0 h-px w-full -translate-y-1/2 animate-[scan-line_2s_linear_infinite] bg-emerald-400 shadow-[0_0_15px_#10b981]" />
+                     </div>
+                   )}
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="manual"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="w-full relative aspect-[1/1.1]"
+              >
+                <form onSubmit={handleManualSubmit} className="h-full w-full rounded-[40px] border-2 border-slate-200 bg-white p-7 flex flex-col justify-center items-center text-center shadow-xl shadow-slate-200/50 overflow-hidden">
+                   <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-slate-50 text-slate-900 mb-4 shrink-0">
+                      <Keyboard className="h-6 w-6" />
+                   </div>
+                   <div className="space-y-0.5 mb-6">
+                      <h3 className="text-lg font-black tracking-tight text-slate-900 leading-none">Manual Entry</h3>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Transmit serial code</p>
+                   </div>
+                   <div className="w-full space-y-3">
+                      <div className="relative group">
+                        <input 
+                          type="text"
+                          placeholder="SN-XXXX-XXXX"
+                          value={manualCode}
+                          onChange={(e) => {
+                            setManualCode(e.target.value.toUpperCase());
+                            if (error) setError(null);
+                          }}
+                          className={cn(
+                            "w-full rounded-[18px] bg-slate-50 border-2 px-5 py-3.5 text-sm font-bold font-mono tracking-widest text-slate-900 placeholder:text-slate-400/40 focus:bg-white focus:outline-none transition-all",
+                            error ? "border-red-500 bg-red-50/10 focus:border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.1)]" : "border-slate-100 focus:border-slate-900 shadow-none"
+                          ) }
+                        />
+                      </div>
+
+                      <AnimatePresence>
+                        {error && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="flex items-center justify-center gap-2 px-2"
+                          >
+                             <AlertCircle className="h-3 w-3 text-red-500" />
+                             <span className="text-[10px] font-black uppercase tracking-tight text-red-500">Unrecognized Device ID</span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <button 
+                        type="submit"
+                        disabled={!manualCode.trim()}
+                        className="flex h-12 w-full items-center justify-center gap-2 rounded-[18px] bg-slate-900 text-[10px] font-black uppercase tracking-[0.15em] text-white transition-all active:scale-95 disabled:opacity-30 shadow-xl shadow-slate-900/10"
+                      >
+                        Verify Hardware <ArrowRight className="h-4 w-4" />
+                      </button>
+                   </div>
+                </form>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -436,6 +462,13 @@ const Scanner: React.FC = () => {
           height: 100% !important; 
           object-fit: cover !important;
           border-radius: 40px !important;
+        }
+        /* Completely kill the default library-generated overlay and boundaries */
+        #reader__scan_region, #reader__dashboard {
+          display: none !important;
+        }
+        #reader img {
+          display: none !important;
         }
       `}} />
     </div>
