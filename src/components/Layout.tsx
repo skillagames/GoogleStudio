@@ -91,31 +91,46 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
           {/* Centered Logo */}
           <div 
             onClick={() => navigate('/')}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer transition-transform active:scale-95"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-transform active:scale-95 group"
           >
-            <motion.div 
-              initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
-              animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
-              transition={{ 
-                type: "spring", 
-                stiffness: 260, 
-                damping: 20,
-                delay: 0.1
-              }}
-              className="bg-black text-white px-1.5 py-0.5 rounded font-black text-base leading-tight shadow-sm"
-            >
-              IoT
-            </motion.div>
-            <div className="flex flex-col leading-none">
-              <motion.span 
-                initial={ENABLE_LOGO_ANIMATION ? { x: -10, opacity: 0 } : {}}
-                animate={ENABLE_LOGO_ANIMATION ? { x: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="text-lg font-black tracking-tighter text-slate-900"
+            <div className="flex items-center gap-2">
+              <motion.div 
+                initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
+                animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 260, 
+                  damping: 20,
+                  delay: 0.1
+                }}
+                className="bg-black text-white px-1.5 py-0.5 rounded font-black text-base leading-tight shadow-sm"
               >
-                Connect
-              </motion.span>
+                IoT
+              </motion.div>
+              <div className="flex flex-col leading-none">
+                <motion.span 
+                  initial={ENABLE_LOGO_ANIMATION ? { x: -10, opacity: 0 } : {}}
+                  animate={ENABLE_LOGO_ANIMATION ? { x: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="text-lg font-black tracking-tighter text-slate-900"
+                >
+                  Connect
+                </motion.span>
+              </div>
             </div>
+            
+            <motion.div
+              initial={ENABLE_LOGO_ANIMATION ? { opacity: 0, y: -2 } : {}}
+              animate={ENABLE_LOGO_ANIMATION ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="w-full flex justify-between items-center mt-1 px-0.5"
+            >
+              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">global</span>
+              <span className="text-[5px] font-black text-slate-200">|</span>
+              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">iot</span>
+              <span className="text-[5px] font-black text-slate-200">|</span>
+              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">connectivity</span>
+            </motion.div>
           </div>
           
           <div className="flex items-center">

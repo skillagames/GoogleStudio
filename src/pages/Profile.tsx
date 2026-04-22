@@ -166,7 +166,7 @@ const Profile: React.FC = () => {
         >
           <div className="flex items-center gap-2">
              <Terminal className="h-3.5 w-3.5 text-primary" />
-             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Developer Payload</h3>
+             <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Developer Tools</h3>
           </div>
           <motion.div
             animate={{ rotate: isDevExpanded ? 180 : 0 }}

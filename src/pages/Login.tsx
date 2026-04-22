@@ -96,43 +96,59 @@ const Login: React.FC = () => {
         className="w-full max-w-sm flex flex-col justify-center space-y-4"
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex items-center gap-2">
-            <motion.div 
-              initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
-              animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
-              transition={{ 
-                type: "spring", 
-                stiffness: 260, 
-                damping: 20,
-                delay: 0.2
-              }}
-              className="bg-black text-white px-2 py-0.5 rounded-lg font-black text-2xl leading-tight shadow-xl"
-            >
-              IoT
-            </motion.div>
-            
-            <div className="flex flex-col items-start leading-none mt-1">
-              <motion.span 
-                initial={ENABLE_LOGO_ANIMATION ? { x: -10, opacity: 0 } : {}}
-                animate={ENABLE_LOGO_ANIMATION ? { x: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="text-3xl font-black tracking-tighter text-slate-900 leading-none"
+          <div className="flex flex-col items-center group">
+            <div className="flex items-center gap-2.5">
+              <motion.div 
+                initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
+                animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 260, 
+                  damping: 20,
+                  delay: 0.2
+                }}
+                className="bg-black text-white px-2 py-0.5 rounded-lg font-black text-2xl leading-tight shadow-xl"
               >
-                Connect
-              </motion.span>
-              <motion.span 
-                initial={ENABLE_LOGO_ANIMATION ? { opacity: 0 } : {}}
-                animate={ENABLE_LOGO_ANIMATION ? { opacity: 1 } : {}}
-                transition={{ delay: 0.7, duration: 0.8 }}
-                className="text-[7px] uppercase tracking-[0.2em] font-bold text-slate-400"
-              >
-                global | connectivity
-              </motion.span>
+                IoT
+              </motion.div>
+              
+              <div className="flex flex-col items-start leading-none mt-1">
+                <motion.span 
+                  initial={ENABLE_LOGO_ANIMATION ? { x: -10, opacity: 0 } : {}}
+                  animate={ENABLE_LOGO_ANIMATION ? { x: 0, opacity: 1 } : {}}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="text-3xl font-black tracking-tighter text-slate-900 leading-none"
+                >
+                  Connect
+                </motion.span>
+              </div>
             </div>
+            
+            <motion.div 
+              initial={ENABLE_LOGO_ANIMATION ? { opacity: 0, y: -2 } : {}}
+              animate={ENABLE_LOGO_ANIMATION ? { opacity: 1, y: 0 } : {}}
+              transition={{ delay: 0.7, duration: 0.8 }}
+              className="mt-1.5 w-full flex justify-between items-center px-1"
+            >
+              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">global</span>
+              <span className="text-[7px] font-black text-slate-200">|</span>
+              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">iot</span>
+              <span className="text-[7px] font-black text-slate-200">|</span>
+              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">connectivity</span>
+            </motion.div>
           </div>
-          <p className="max-w-[180px] text-[12px] font-medium text-slate-500 leading-tight">
-            {isSignUp ? 'Create management account' : 'Sign in to dashboard'}
-          </p>
+          
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1, duration: 0.5 }}
+            className="flex flex-col items-center gap-1.5"
+          >
+            <div className="flex h-px w-8 bg-slate-100" />
+            <p className="text-[11px] font-medium tracking-tight text-slate-500">
+               {isSignUp ? 'Create management account' : 'Sign in to dashboard'}
+            </p>
+          </motion.div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-2.5">

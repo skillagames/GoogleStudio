@@ -84,7 +84,12 @@ const Dashboard: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm"
         >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* IoT Logo Watermark */}
+          <div className="absolute -right-6 -top-6 text-slate-100/50 pointer-events-none z-0">
+             <Smartphone size={160} strokeWidth={1.5} className="rotate-12 opacity-50" />
+          </div>
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-1 rounded-full bg-primary animate-pulse" />
@@ -177,9 +182,15 @@ const Dashboard: React.FC = () => {
             {filter && (
                <button 
                 onClick={() => setFilter(null)}
-                className="flex items-center gap-1 rounded-full bg-slate-900 px-2 py-0.5 text-[8px] font-bold text-white uppercase tracking-tighter"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[8px] font-black uppercase tracking-widest border transition-all active:scale-95 shadow-sm",
+                  filter === 'active' && "bg-emerald-50 text-emerald-600 border-emerald-100",
+                  filter === 'expired' && "bg-red-50 text-red-600 border-red-100",
+                  filter === 'inactive' && "bg-slate-50 text-slate-500 border-slate-200"
+                )}
                >
-                 {filter} <X className="h-2 w-2" />
+                 <span>{filter}</span>
+                 <X className="h-2 w-2" />
                </button>
             )}
           </div>
