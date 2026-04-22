@@ -7,7 +7,8 @@ self.addEventListener('push', function(event) {
       body: data.body,
       icon: data.icon || iconUrl,
       badge: data.badge || iconUrl,
-      vibrate: [100, 50, 100],
+      vibrate: [200, 100, 200, 100, 200],
+      requireInteraction: true,
       data: {
         dateOfArrival: Date.now(),
         primaryKey: '2'

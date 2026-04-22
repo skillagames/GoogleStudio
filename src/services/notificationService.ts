@@ -319,13 +319,18 @@ class NotificationService {
     const swOptions: any = {
       body: options.body,
       tag: options.tag || 'iot-notif-' + Date.now(),
-      vibrate: [200, 100, 200],
+      vibrate: [200, 100, 200, 100, 200],
       requireInteraction: false
     };
 
     if (!standalone) {
       swOptions.icon = options.icon || APP_ICON_URL;
       swOptions.badge = APP_ICON_URL;
+    }
+
+    // Secondary raw vibrate trigger just in case the OS blocks background vibration arrays
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200, 100, 200]);
     }
 
     // 3. Service Worker Path (Recommended for Android/APK)
@@ -357,37 +362,38 @@ class NotificationService {
             await registration.showNotification(options.title, swOptions).catch(e => console.warn('showNotification failed:', e));
             handledViaSW = true;
           }
-
-          if (handledViaSW) {
-            return; // Exit successfully if SW handled it
-          }
         }
       } catch (swError) {
         console.warn('SW notification failed:', swError);
       }
     }
 
-    // 4. Classic Fallback (Avoid on mobile browsers to prevent "Illegal constructor" errors)
-    const isMobileBrowser = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
-    if (typeof Notification !== 'undefined' && !isMobileBrowser) {
+    // 4. Classic Fallback & Wrapper Interceptor
+    // Many APK wrappers specifically intercept the explicit `new Notification()` call.
+    // By forcing this to run despite the OS, we ensure they catch it.
+    if (typeof Notification !== 'undefined') {
       try {
         if (!standalone && (Notification.permission as string) !== 'granted') {
           await this.requestPermission();
-          if ((Notification.permission as string) !== 'granted') return;
+          if ((Notification.permission as string) !== 'granted') {
+             // Still attempt it if standalone, because wrappers lie about permissions
+             if (!standalone) return;
+          }
         }
         
         const fullOptions = {
           ...swOptions,
           icon: options.icon || APP_ICON_URL,
           silent: false,
-          renotify: true
+          renotify: true,
+          vibrate: [200, 100, 200, 100, 200]
         };
         
-        // This is where the "Illegal constructor" error usually happens
+        // Android Chromium usually throws 'Illegal constructor' here unless heavily polyfilled by the wrapper.
+        // If the wrapper is listening, this connects.
         new Notification(options.title, fullOptions);
       } catch (error) {
-        console.warn('Classic Notification constructor failed (expected on some mobile browsers):', error);
+        console.warn('Classic Notification constructor failed (expected if not polyfilled by wrapper):', error);
       }
     }
   }
