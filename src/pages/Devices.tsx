@@ -148,13 +148,14 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[28px] bg-white p-2 pr-6 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50" : isInactive ? "border-slate-100 border-dashed opacity-80" : "border-slate-100 hover:border-slate-900 hover:shadow-xl hover:shadow-slate-900/5"
+        isExpired ? "border-red-100/50 hover:border-red-500 hover:shadow-red-500/5" : isInactive ? "border-slate-100 border-dashed opacity-80 hover:border-slate-400" : "border-slate-100 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5"
       )}
     >
       <div className={cn(
-        "flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] bg-slate-50 text-slate-900 transition-colors group-hover:bg-slate-900 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-500",
-        isInactive && "bg-slate-50 text-slate-300"
+        "flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] transition-colors",
+        !isExpired && !isInactive && "bg-slate-50 text-slate-900 group-hover:bg-emerald-500 group-hover:text-white",
+        isExpired && "bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white",
+        isInactive && "bg-slate-50 text-slate-300 group-hover:bg-slate-500 group-hover:text-white"
       )}>
         <Smartphone className="h-7 w-7" />
       </div>
@@ -172,7 +173,12 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
         </div>
       </div >
 
-      <div className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+      <div className={cn(
+        "h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 transition-colors",
+        !isExpired && !isInactive && "group-hover:bg-emerald-500 group-hover:text-white",
+        isExpired && "group-hover:bg-red-500 group-hover:text-white",
+        isInactive && "group-hover:bg-slate-500 group-hover:text-white"
+      )}>
         <ChevronRight className="h-4 w-4" />
       </div>
     </button>

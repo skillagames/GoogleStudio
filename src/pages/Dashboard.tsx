@@ -85,8 +85,8 @@ const Dashboard: React.FC = () => {
           className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-4 shadow-sm"
         >
           {/* IoT Logo Watermark */}
-          <div className="absolute -right-6 -top-6 text-slate-100/50 pointer-events-none z-0">
-             <Smartphone size={160} strokeWidth={1.5} className="rotate-12 opacity-50" />
+          <div className="absolute -right-6 -top-6 text-slate-200/40 pointer-events-none z-0">
+             <Smartphone size={160} strokeWidth={1.5} className="rotate-12" />
           </div>
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -344,13 +344,14 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[24px] bg-white p-1.5 pr-5 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50" : isInactive ? "border-slate-50 opacity-90 border-dashed" : "border-slate-100 hover:border-slate-300"
+        isExpired ? "border-red-100/50 hover:border-red-500" : isInactive ? "border-slate-50 opacity-90 border-dashed hover:border-slate-300" : "border-slate-100 hover:border-emerald-500"
       )}
     >
       <div className={cn(
-        "flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-slate-50 text-slate-900 transition-colors group-hover:bg-slate-900 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-400",
-        isInactive && "bg-slate-100 text-slate-400"
+        "flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] transition-colors",
+        !isExpired && !isInactive && "bg-slate-50 text-slate-900 group-hover:bg-emerald-500 group-hover:text-white",
+        isExpired && "bg-red-50 text-red-400 group-hover:bg-red-500 group-hover:text-white",
+        isInactive && "bg-slate-100 text-slate-400 group-hover:bg-slate-600 group-hover:text-white"
       )}>
         <Smartphone className="h-6 w-6" />
       </div>
