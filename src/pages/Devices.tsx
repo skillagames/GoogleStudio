@@ -153,7 +153,7 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
     >
       <div className={cn(
         "flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] transition-colors",
-        !isExpired && !isInactive && "bg-slate-50 text-slate-900 group-hover:bg-emerald-500 group-hover:text-white",
+        !isExpired && !isInactive && "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
         isExpired && "bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white",
         isInactive && "bg-slate-50 text-slate-300 group-hover:bg-slate-500 group-hover:text-white"
       )}>
@@ -175,9 +175,9 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
 
       <div className={cn(
         "h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 transition-colors",
-        !isExpired && !isInactive && "group-hover:bg-emerald-500 group-hover:text-white",
-        isExpired && "group-hover:bg-red-500 group-hover:text-white",
-        isInactive && "group-hover:bg-slate-500 group-hover:text-white"
+        !isExpired && !isInactive && "text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
+        isExpired && "text-red-500 group-hover:bg-red-500 group-hover:text-white",
+        isInactive && "text-slate-300 group-hover:bg-slate-500 group-hover:text-white"
       )}>
         <ChevronRight className="h-4 w-4" />
       </div>

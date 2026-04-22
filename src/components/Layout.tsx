@@ -90,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
 
           <div 
             onClick={() => navigate('/')}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-transform active:scale-95 group w-max"
+            className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-transform active:scale-95 group w-max"
           >
             <div className="flex items-center gap-2 whitespace-nowrap">
               <motion.div 
@@ -122,7 +122,7 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
               initial={ENABLE_LOGO_ANIMATION ? { opacity: 0, y: -2 } : {}}
               animate={ENABLE_LOGO_ANIMATION ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="mt-1 flex w-full justify-between items-center px-0.5 origin-top scale-[0.65]"
+              className="mt-0.5 flex w-full justify-between items-center px-0.5 origin-top scale-[0.65]"
             >
               <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap">global</span>
               <span className="text-[10px] font-medium text-slate-200 mx-1">|</span>

@@ -205,7 +205,7 @@ const Dashboard: React.FC = () => {
           className={cn(
             "pr-1 -mr-1 scrollbar-thin scrollbar-thumb-slate-200 transition-all duration-300",
             filter 
-              ? (isSticky ? "h-[360px] overflow-y-auto" : "h-[360px] overflow-hidden") 
+              ? (isSticky ? "h-[440px] overflow-y-auto" : "h-[440px] overflow-hidden") 
               : "h-auto overflow-visible"
           )}
         >
@@ -349,7 +349,7 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
     >
       <div className={cn(
         "flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] transition-colors",
-        !isExpired && !isInactive && "bg-slate-50 text-slate-900 group-hover:bg-emerald-500 group-hover:text-white",
+        !isExpired && !isInactive && "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white",
         isExpired && "bg-red-50 text-red-400 group-hover:bg-red-500 group-hover:text-white",
         isInactive && "bg-slate-100 text-slate-400 group-hover:bg-slate-600 group-hover:text-white"
       )}>

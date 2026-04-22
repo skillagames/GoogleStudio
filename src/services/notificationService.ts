@@ -144,76 +144,87 @@ class NotificationService {
     if (!container) {
       container = document.createElement('div');
       container.id = 'iot-toast-container';
-      container.style.cssText = 'position:fixed;top:10px;left:0;right:0;z-index:99999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 12px;';
+      container.style.cssText = 'position:fixed;top:12px;left:0;right:0;z-index:999999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 12px;';
       document.body.appendChild(container);
     }
 
-    // Create the toast (iOS Notification Style - LIGHT THEME)
+    // Create the toast (iOS Notification Style)
     const toast = document.createElement('div');
     toast.style.cssText = `
-      background: rgba(242, 242, 247, 0.2);
-      -webkit-backdrop-filter: blur(45px) saturate(210%);
-      backdrop-filter: blur(45px) saturate(210%);
-      color: #1c1c1e;
-      padding: 12px 16px;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.1);
+      position: relative;
+      background: rgba(241, 245, 249, 0.85);
+      -webkit-backdrop-filter: blur(40px) saturate(220%);
+      backdrop-filter: blur(40px) saturate(220%);
+      border-radius: 26px;
+      padding: 16px 18px;
+      box-shadow: 
+        0 8px 32px rgba(15, 23, 42, 0.12), 
+        0 1px 4px rgba(15, 23, 42, 0.05), 
+        inset 0 0 0 1px rgba(255, 255, 255, 0.6);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 14px;
       width: 100%;
-      max-width: 360px;
-      transform: translateY(-80px) scale(0.96);
+      max-width: 380px;
+      transform: translateY(-120px) scale(0.9);
       opacity: 0;
       transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
       pointer-events: auto;
       user-select: none;
       cursor: grab;
       touch-action: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     `;
     
     // Icon (iOS Style App Icon)
     const iconContainer = document.createElement('div');
-    iconContainer.style.cssText = 'width: 38px; height: 38px; background: #000; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; font-weight: 900; box-shadow: 0 2px 8px rgba(0,0,0,0.2); position: relative; overflow: hidden;';
+    iconContainer.style.cssText = 'width: 44px; height: 44px; background: #0f172a; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(15,23,42,0.2), inset 0 0 0 1px rgba(255,255,255,0.1); margin-top: 2px;';
     iconContainer.innerHTML = `
-      <span style="color:white; letter-spacing: -0.8px; transform: scale(1.1); position: relative; z-index: 1;">IoT</span>
+      <span style="color:white; font-size: 15px; font-weight: 900; letter-spacing: -0.5px;">IoT</span>
     `;
 
     const contentEl = document.createElement('div');
-    contentEl.style.cssText = 'display: flex; flex-direction: column; overflow: hidden; flex: 1;';
+    contentEl.style.cssText = 'display: flex; flex-direction: column; flex: 1;';
+
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;';
+    headerRow.innerHTML = `
+      <span style="font-size: 13px; font-weight: 700; color: #3b82f6; letter-spacing: -0.2px;">IOT APP</span>
+      <span style="font-size: 13px; font-weight: 500; color: #94a3b8;">now</span>
+    `;
 
     const titleEl = document.createElement('div');
-    titleEl.style.cssText = 'font-weight: 700; font-size: 14px; letter-spacing: -0.1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; color: #f43f5e;';
+    titleEl.style.cssText = 'font-weight: 700; font-size: 15px; letter-spacing: -0.2px; line-height: 1.3; color: #0f172a; margin-bottom: 2px;';
     titleEl.innerText = title;
 
     const bodyEl = document.createElement('div');
-    bodyEl.style.cssText = 'font-size: 13px; color: #3a3a3c; font-weight: 400; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;';
+    bodyEl.style.cssText = 'font-size: 15px; font-weight: 500; color: #475569; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;';
     bodyEl.innerText = body;
 
+    contentEl.appendChild(headerRow);
     contentEl.appendChild(titleEl);
     contentEl.appendChild(bodyEl);
     toast.appendChild(iconContainer);
     toast.appendChild(contentEl);
     container.appendChild(toast);
 
-    // Swipe / Dismissal Logic (Swipe Right)
-    let startX = 0;
-    let currentX = 0;
+    // Swipe / Dismissal Logic (Swipe Up)
+    let startY = 0;
+    let currentY = 0;
     let isDragging = false;
 
     const onTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
       isDragging = true;
       toast.style.transition = 'none';
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (!isDragging) return;
-      currentX = e.touches[0].clientX - startX;
-      if (currentX > 0) { // Only allow swiping right
-        const rotation = Math.min(currentX * 0.03, 10);
-        toast.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
-        toast.style.opacity = `${1 - (currentX / 400)}`;
+      currentY = e.touches[0].clientY - startY;
+      if (currentY < 0) { // Only allow swiping up
+        toast.style.transform = `translateY(${currentY}px) scale(1)`;
+        toast.style.opacity = `${1 - (Math.abs(currentY) / 200)}`;
       }
     };
 
@@ -222,12 +233,12 @@ class NotificationService {
       isDragging = false;
       toast.style.transition = 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)';
       
-      if (currentX > 100) {
-        removeToast('right');
+      if (currentY < -40) {
+        removeToast('up');
       } else {
         toast.style.transform = 'translateY(0) scale(1)';
         toast.style.opacity = '1';
-        currentX = 0;
+        currentY = 0;
       }
     };
 
@@ -244,13 +255,8 @@ class NotificationService {
     });
 
     // Auto-remove
-    const removeToast = (direction: 'auto' | 'right' = 'auto') => {
-      if (direction === 'right') {
-        toast.style.transform = `translateX(${window.innerWidth}px) rotate(15deg)`;
-      } else {
-        toast.style.transform = 'translateY(-100px) scale(0.9)';
-      }
-      
+    const removeToast = (direction: 'auto' | 'up' = 'auto') => {
+      toast.style.transform = `translateY(${direction === 'up' ? '-150px' : '-100px'}) scale(0.9)`;
       toast.style.opacity = '0';
       setTimeout(() => {
         if (toast.parentNode) toast.parentNode.removeChild(toast);
@@ -263,7 +269,7 @@ class NotificationService {
 
     // Click to dismiss fallback
     toast.onclick = (e) => {
-      if (currentX > 10) return; // Ignore clicks if dragging
+      if (Math.abs(currentY) > 10) return; // Ignore clicks if dragging
       clearTimeout(timeoutId);
       removeToast();
     };
