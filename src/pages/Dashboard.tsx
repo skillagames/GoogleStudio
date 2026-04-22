@@ -254,7 +254,7 @@ const Dashboard: React.FC = () => {
       {/* Cluster Insights Section */}
       {profile?.showInsights !== false && (
         <section className="space-y-4 pt-2">
-           <div className="flex items-center justify-between mb-2">
+           <div className="flex items-center justify-between pb-2">
               <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cluster Insights</h2>
               <div className="flex h-1 w-12 rounded-full bg-slate-100 overflow-hidden">
                 <div className="h-full bg-primary w-2/3" />
