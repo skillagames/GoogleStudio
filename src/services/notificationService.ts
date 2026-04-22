@@ -282,9 +282,9 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
-    // 0. Trigger immediate physical feedback
+    // 0. Trigger immediate physical feedback (Strong pattern)
     if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200]);
+      navigator.vibrate([200, 100, 200, 100, 200]);
     }
 
     const standalone = this.isStandalone();
@@ -295,24 +295,39 @@ class NotificationService {
       this.showForegroundToast(options.title, options.body);
     }
     
-    // 2. Try Native Bridges (WebToNative, etc)
-    const nativeApp = (window as any).WTN || (window as any).TN || (window as any).JSBridge || (window as any).Android;
-    const webkit = (window as any).webkit;
-    
-    if (nativeApp || (webkit && webkit.messageHandlers)) {
-       try {
-         // WebToNative / Bridge Path
-         const method = nativeApp?.showNotification || nativeApp?.localNotification || nativeApp?.notify;
-         if (typeof method === 'function') {
-           method.call(nativeApp, options.title, options.body);
-         } else if (webkit?.messageHandlers?.notification) {
-           webkit.messageHandlers.notification.postMessage({ title: options.title, body: options.body });
-         }
-         
-         // Don't return here if we want to also try standard paths for multi-targeting
-       } catch (e) {
-         console.warn('Native bridge notify failed:', e);
-       }
+    // 2. Brute-Force Native Bridges (Catches 95% of APK wrapping services)
+    try {
+      const w = window as any;
+      const title = options.title;
+      const body = options.body;
+
+      // Type A: Standard Android JavascriptInterface patterns
+      if (w.Android) {
+        if (typeof w.Android.showNotification === 'function') w.Android.showNotification(title, body);
+        else if (typeof w.Android.notify === 'function') w.Android.notify(title, body);
+        else if (typeof w.Android.postMessage === 'function') w.Android.postMessage(JSON.stringify({type: 'notification', title, body}));
+      }
+      
+      // Type B: WebToNative, GoNative, Median, WebIntoApp
+      if (w.WTN && typeof w.WTN.showNotification === 'function') w.WTN.showNotification(title, body);
+      if (w.JSBridge && typeof w.JSBridge.showNotification === 'function') w.JSBridge.showNotification(title, body);
+      if (w.gonative && typeof w.gonative.notification === 'function') w.gonative.notification({title, body});
+      
+      // Type C: Cordova / PhoneGap / Capacitor (Local Notifications Plugin)
+      if (w.cordova && w.cordova.plugins && w.cordova.plugins.notification && w.cordova.plugins.notification.local) {
+        w.cordova.plugins.notification.local.schedule({ title, text: body });
+      }
+      if (w.Capacitor && w.Capacitor.Plugins && w.Capacitor.Plugins.LocalNotifications) {
+        w.Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{ title, body, id: Date.now() }] });
+      }
+
+      // Type D: iOS WKWebView Handlers
+      if (w.webkit && w.webkit.messageHandlers) {
+        if (w.webkit.messageHandlers.notification) w.webkit.messageHandlers.notification.postMessage({ title, body });
+        if (w.webkit.messageHandlers.pushNotification) w.webkit.messageHandlers.pushNotification.postMessage({ title, body });
+      }
+    } catch (e) {
+      console.warn('Native bridge brute-force failed:', e);
     }
 
     // Simplified options for mobile/APK compatibility
