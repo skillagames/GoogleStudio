@@ -88,12 +88,11 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
             )}
           </div>
 
-          {/* Centered Logo */}
           <div 
             onClick={() => navigate('/')}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-transform active:scale-95 group"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center cursor-pointer transition-transform active:scale-95 group w-max"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 whitespace-nowrap">
               <motion.div 
                 initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
                 animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
@@ -123,13 +122,13 @@ const Layout: React.FC<LayoutProps> = ({ children, showBack }) => {
               initial={ENABLE_LOGO_ANIMATION ? { opacity: 0, y: -2 } : {}}
               animate={ENABLE_LOGO_ANIMATION ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="w-full flex justify-between items-center mt-1 px-0.5"
+              className="mt-1 flex w-full justify-between items-center px-0.5 origin-top scale-[0.65]"
             >
-              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">global</span>
-              <span className="text-[5px] font-black text-slate-200">|</span>
-              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">iot</span>
-              <span className="text-[5px] font-black text-slate-200">|</span>
-              <span className="text-[5px] font-black uppercase tracking-[0.1em] text-slate-400">connectivity</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap">global</span>
+              <span className="text-[10px] font-medium text-slate-200 mx-1">|</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap">iot</span>
+              <span className="text-[10px] font-medium text-slate-200 mx-1">|</span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400 whitespace-nowrap">connectivity</span>
             </motion.div>
           </div>
           

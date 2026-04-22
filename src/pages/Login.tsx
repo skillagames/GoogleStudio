@@ -96,8 +96,8 @@ const Login: React.FC = () => {
         className="w-full max-w-sm flex flex-col justify-center space-y-4"
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex flex-col items-center group">
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-col items-center group w-max">
+            <div className="flex items-center gap-2.5 whitespace-nowrap">
               <motion.div 
                 initial={ENABLE_LOGO_ANIMATION ? { scale: 0.5, opacity: 0, rotate: -15 } : {}}
                 animate={ENABLE_LOGO_ANIMATION ? { scale: 1, opacity: 1, rotate: 0 } : {}}
@@ -128,13 +128,13 @@ const Login: React.FC = () => {
               initial={ENABLE_LOGO_ANIMATION ? { opacity: 0, y: -2 } : {}}
               animate={ENABLE_LOGO_ANIMATION ? { opacity: 1, y: 0 } : {}}
               transition={{ delay: 0.7, duration: 0.8 }}
-              className="mt-1.5 w-full flex justify-between items-center px-1"
+              className="mt-2 w-full flex justify-between items-center px-1 origin-top scale-[0.85]"
             >
-              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">global</span>
-              <span className="text-[7px] font-black text-slate-200">|</span>
-              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">iot</span>
-              <span className="text-[7px] font-black text-slate-200">|</span>
-              <span className="text-[7px] uppercase tracking-[0.1em] font-black text-slate-400">connectivity</span>
+              <span className="text-[12px] uppercase tracking-[0.1em] font-medium text-slate-400 whitespace-nowrap">global</span>
+              <span className="text-[12px] font-medium text-slate-200 mx-1">|</span>
+              <span className="text-[12px] uppercase tracking-[0.1em] font-medium text-slate-400 whitespace-nowrap">iot</span>
+              <span className="text-[12px] font-medium text-slate-200 mx-1">|</span>
+              <span className="text-[12px] uppercase tracking-[0.1em] font-medium text-slate-400 whitespace-nowrap">connectivity</span>
             </motion.div>
           </div>
           
