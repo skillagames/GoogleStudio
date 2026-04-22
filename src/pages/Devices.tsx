@@ -148,14 +148,14 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[28px] bg-white p-2 pr-6 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50 hover:border-red-500 hover:shadow-red-500/5" : isInactive ? "border-slate-100 border-dashed opacity-80 hover:border-slate-400" : "border-slate-100 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5"
+        isExpired ? "border-red-100/50 active:border-red-500 active:shadow-red-500/5 md:hover:border-red-500 md:hover:shadow-red-500/5" : isInactive ? "border-slate-100 border-dashed opacity-80 active:border-slate-400 md:hover:border-slate-400" : "border-slate-100 active:border-emerald-500 active:shadow-xl active:shadow-emerald-500/5 md:hover:border-emerald-500 md:hover:shadow-xl md:hover:shadow-emerald-500/5"
       )}
     >
       <div className={cn(
         "flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] transition-colors",
-        !isExpired && !isInactive && "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-500 group-hover:bg-red-500 group-hover:text-white",
-        isInactive && "bg-slate-50 text-slate-300 group-hover:bg-slate-500 group-hover:text-white"
+        !isExpired && !isInactive && "bg-emerald-50 text-emerald-600 group-active:bg-emerald-500 group-active:text-white md:group-hover:bg-emerald-500 md:group-hover:text-white",
+        isExpired && "bg-red-50 text-red-500 group-active:bg-red-500 group-active:text-white md:group-hover:bg-red-500 md:group-hover:text-white",
+        isInactive && "bg-slate-50 text-slate-300 group-active:bg-slate-500 group-active:text-white md:group-hover:bg-slate-500 md:group-hover:text-white"
       )}>
         <Smartphone className="h-7 w-7" />
       </div>
@@ -175,9 +175,9 @@ const DeviceItem = ({ device, onClick }: { device: Device; onClick: () => void }
 
       <div className={cn(
         "h-8 w-8 flex items-center justify-center rounded-full bg-slate-50 transition-colors",
-        !isExpired && !isInactive && "text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-        isExpired && "text-red-500 group-hover:bg-red-500 group-hover:text-white",
-        isInactive && "text-slate-300 group-hover:bg-slate-500 group-hover:text-white"
+        !isExpired && !isInactive && "text-emerald-600 group-active:bg-emerald-500 group-active:text-white md:group-hover:bg-emerald-500 md:group-hover:text-white",
+        isExpired && "text-red-500 group-active:bg-red-500 group-active:text-white md:group-hover:bg-red-500 md:group-hover:text-white",
+        isInactive && "text-slate-300 group-active:bg-slate-500 group-active:text-white md:group-hover:bg-slate-500 md:group-hover:text-white"
       )}>
         <ChevronRight className="h-4 w-4" />
       </div>

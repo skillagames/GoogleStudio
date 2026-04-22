@@ -37,6 +37,14 @@ self.addEventListener('notificationclick', function(event) {
   );
 });
 
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    event.waitUntil(
+      self.registration.showNotification(event.data.title, event.data.options)
+    );
+  }
+});
+
 self.addEventListener('install', function(event) {
   self.skipWaiting();
 });

@@ -176,7 +176,7 @@ const Dashboard: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between h-7">
           <div className="flex items-center gap-2">
             <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Quick Inventory</h2>
             {filter && (
@@ -199,7 +199,7 @@ const Dashboard: React.FC = () => {
       </section>
 
       {/* Natural List with Independent Scroll (conditional) */}
-      <section className="relative">
+      <section className="relative -mt-4">
         <div 
           ref={listRef} 
           className={cn(
@@ -262,50 +262,76 @@ const Dashboard: React.FC = () => {
            </div>
 
            <div className="grid gap-4">
-              {/* Health Overview Card */}
-              <div className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white p-6 shadow-sm">
-                 <div className="flex items-center gap-6">
-                    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center">
-                       <svg className="h-full w-full -rotate-90 transform">
-                          <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-50" />
-                          <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="226.2" strokeDashoffset={226.2 - (226.2 * (devices.filter(d => d.subscriptionStatus === 'active').length / (devices.length || 1)))} className="text-primary transition-all duration-1000 ease-out" />
-                       </svg>
-                       <div className="absolute flex flex-col items-center leading-none">
-                          <span className="text-lg font-black text-slate-900">{Math.round((devices.filter(d => d.subscriptionStatus === 'active').length / (devices.length || 1)) * 100)}%</span>
-                          <span className="text-[7px] font-black uppercase text-slate-400">Health</span>
+              {/* Health Overview Container */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                 
+                 {/* Operational Status Card */}
+                 <div className="relative overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-sm p-6 flex flex-col justify-between group">
+                    <div className="absolute top-0 right-0 p-6 pointer-events-none opacity-20 group-hover:opacity-10 transition-opacity">
+                       <Activity className="w-24 h-24 text-slate-200" strokeWidth={1} />
+                    </div>
+                    
+                    <div className="flex items-start justify-between relative z-10">
+                       <div className="space-y-1">
+                          <div className="flex items-center gap-2 mb-1">
+                             <div className="relative flex h-2 w-2">
+                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                             </div>
+                             <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Operational Status</h4>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium leading-relaxed whitespace-nowrap">Cluster optimized. {devices.filter(d => d.subscriptionStatus === 'active').length} active devices running efficiently.</p>
                        </div>
                     </div>
                     
-                    <div className="space-y-3">
-                       <div>
-                          <h4 className="text-xs font-black text-slate-900 uppercase">Operational Status</h4>
-                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed">Your cluster is currently performing at optimized capacity with {devices.filter(d => d.subscriptionStatus === 'active').length} active devices.</p>
-                       </div>
-                       <div className="flex gap-4">
-                          <div className="space-y-0.5">
-                             <p className="text-[8px] font-black text-slate-400 uppercase">Throughput</p>
-                             <p className="text-xs font-black text-slate-900 italic">2.4 GB/s</p>
+                    <div className="flex items-center gap-6 mt-6 relative z-10">
+                       <div className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center">
+                          <svg className="h-full w-full -rotate-90 transform dropshadow-xl">
+                             <defs>
+                               <linearGradient id="healthGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                 <stop offset="0%" stopColor="#3b82f6" />
+                                 <stop offset="100%" stopColor="#8b5cf6" />
+                               </linearGradient>
+                             </defs>
+                             <circle cx="36" cy="36" r="32" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-50" />
+                             <circle cx="36" cy="36" r="32" stroke="url(#healthGrad)" strokeWidth="6" strokeLinecap="round" fill="transparent" strokeDasharray="201.06" strokeDashoffset={201.06 - (201.06 * (devices.filter(d => d.subscriptionStatus === 'active').length / (devices.length || 1)))} className="transition-all duration-1000 ease-out drop-shadow-md" />
+                          </svg>
+                          <div className="absolute flex flex-col items-center leading-none mt-0.5">
+                             <span className="text-sm font-black text-slate-900">{Math.round((devices.filter(d => d.subscriptionStatus === 'active').length / (devices.length || 1)) * 100)}<span className="text-[10px]">%</span></span>
                           </div>
-                          <div className="space-y-0.5">
-                             <p className="text-[8px] font-black text-slate-400 uppercase">Latency</p>
-                             <p className="text-xs font-black text-slate-900 italic">12ms</p>
+                       </div>
+                       
+                       <div className="flex flex-col gap-3 w-full">
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Throughput</span>
+                             <span className="text-[11px] font-black text-slate-900 font-mono">2.4<span className="text-[8px] text-slate-400 ml-0.5 font-sans">GB/S</span></span>
+                          </div>
+                          <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                             <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Latency</span>
+                             <span className="text-[11px] font-black text-slate-900 font-mono">12<span className="text-[8px] text-slate-400 ml-0.5 font-sans">MS</span></span>
                           </div>
                        </div>
                     </div>
                  </div>
-              </div>
 
-              {/* Recent Activity Log */}
-              <div className="rounded-[32px] border border-slate-100 bg-slate-50 p-6">
-                 <div className="flex items-center gap-2 mb-4">
-                    <Activity className="h-3.5 w-3.5 text-slate-400" />
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recent Logistics</h4>
-                 </div>
-                 
-                 <div className="space-y-4">
-                    <LogItem icon={Zap} title="Telemetry Pulse" desc="Device Pro Route X1 transmitted usage metrics" time="2m ago" color="blue" />
-                    <LogItem icon={ShieldCheck} title="Service Renewal" desc="Field Monitor M1 subscription auto-renewed" time="1h ago" color="emerald" />
-                    <LogItem icon={AlertCircle} title="Low Signal" desc="Enterprise Hub G5 reporting intermittent latency" time="3h ago" color="red" />
+                 {/* Recent Activity Timeline */}
+                 <div className="relative overflow-hidden rounded-[32px] border border-white/60 bg-gradient-to-br from-blue-50/40 via-white/40 to-emerald-50/20 backdrop-blur-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 flex flex-col">
+                    <div className="absolute -top-12 -right-6 h-32 w-32 rounded-full bg-blue-300/10 blur-3xl" />
+                    <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-emerald-300/10 blur-3xl" />
+                    
+                    <div className="flex items-center justify-between mb-5 relative z-10">
+                       <div className="flex items-center gap-2">
+                          <Activity className="h-3.5 w-3.5 text-blue-500" />
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500">Live Logistics</h4>
+                       </div>
+                       <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                    </div>
+                    
+                    <div className="relative flex-1 space-y-4 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-slate-200">
+                       <LogItem icon={Zap} title="Telemetry Pulse" desc="Route X1 transmitted metrics" time="2m ago" color="blue" />
+                       <LogItem icon={ShieldCheck} title="Service Renewal" desc="Field Monitor M1 renewed" time="1h ago" color="emerald" />
+                       <LogItem icon={AlertCircle} title="Low Signal" desc="Enterprise Hub G5 latency" time="3h ago" color="red" />
+                    </div>
                  </div>
               </div>
            </div>
@@ -316,21 +342,21 @@ const Dashboard: React.FC = () => {
 };
 
 const LogItem = ({ icon: Icon, title, desc, time, color }: { icon: any, title: string, desc: string, time: string, color: 'blue' | 'emerald' | 'red' }) => (
-  <div className="flex gap-4">
+  <div className="group relative flex gap-4">
      <div className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100",
+        "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/60 bg-white/80 backdrop-blur-sm transition-colors group-hover:border-slate-200/60 shadow-sm",
         color === 'blue' && "text-blue-500",
         color === 'emerald' && "text-emerald-500",
         color === 'red' && "text-red-500"
      )}>
         <Icon className="h-4 w-4" />
      </div>
-     <div className="flex-1 space-y-0.5">
+     <div className="flex-1 space-y-0.5 pt-0.5">
         <div className="flex items-center justify-between">
-           <h5 className="text-[10px] font-black text-slate-900 uppercase">{title}</h5>
-           <span className="text-[8px] font-bold text-slate-400">{time}</span>
+           <h5 className="text-xs font-bold text-slate-900">{title}</h5>
+           <span className="text-[9px] font-bold text-slate-400 font-mono bg-white/50 px-1.5 py-0.5 rounded shadow-sm">{time}</span>
         </div>
-        <p className="text-[10px] text-slate-500 font-medium leading-tight">{desc}</p>
+        <p className="text-[11px] text-slate-500 leading-tight">{desc}</p>
      </div>
   </div>
 );
@@ -344,14 +370,14 @@ const DeviceCard = ({ device, onClick }: { device: Device; onClick: () => void }
       onClick={onClick}
       className={cn(
         "group relative flex w-full items-center gap-4 overflow-hidden rounded-[24px] bg-white p-1.5 pr-5 border transition-all active:scale-[0.98] shadow-sm",
-        isExpired ? "border-red-100/50 hover:border-red-500" : isInactive ? "border-slate-50 opacity-90 border-dashed hover:border-slate-300" : "border-slate-100 hover:border-emerald-500"
+        isExpired ? "border-red-100/50 active:border-red-500 md:hover:border-red-500" : isInactive ? "border-slate-50 opacity-90 border-dashed active:border-slate-300 md:hover:border-slate-300" : "border-slate-100 active:border-emerald-500 md:hover:border-emerald-500"
       )}
     >
       <div className={cn(
         "flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] transition-colors",
-        !isExpired && !isInactive && "bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white",
-        isExpired && "bg-red-50 text-red-400 group-hover:bg-red-500 group-hover:text-white",
-        isInactive && "bg-slate-100 text-slate-400 group-hover:bg-slate-600 group-hover:text-white"
+        !isExpired && !isInactive && "bg-emerald-50 text-emerald-500 group-active:bg-emerald-500 group-active:text-white md:group-hover:bg-emerald-500 md:group-hover:text-white",
+        isExpired && "bg-red-50 text-red-400 group-active:bg-red-500 group-active:text-white md:group-hover:bg-red-500 md:group-hover:text-white",
+        isInactive && "bg-slate-100 text-slate-400 group-active:bg-slate-600 group-active:text-white md:group-hover:bg-slate-600 md:group-hover:text-white"
       )}>
         <Smartphone className="h-6 w-6" />
       </div>

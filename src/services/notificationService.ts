@@ -67,12 +67,10 @@ class NotificationService {
   }
 
   public async requestPermission(): Promise<boolean> {
-    // If in a native wrapper/standalone app, permissions are usually handled by the APK shell
-    if (this.isStandalone()) return true;
-
     if (!('Notification' in window)) {
       console.warn('Notifications not supported in this browser');
-      return false;
+      // If we are in Native wrapper but no Notification API exists, assume true for custom native bridges
+      return this.isStandalone();
     }
     
     // Check if we are in an iframe
@@ -92,20 +90,28 @@ class NotificationService {
         
         // Some mobile browsers require service worker interaction for permissions
         if ('serviceWorker' in navigator && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration && 'pushManager' in registration) {
-             // Try to trigger via push manager if available
-             await registration.pushManager.getSubscription();
-          }
+          try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration && 'pushManager' in registration) {
+               // Try to trigger via push manager if available
+               await registration.pushManager.getSubscription();
+            }
+          } catch(e) {}
         }
 
-        // Standard Promise-based API
+        // Standard Promise-based API - EXECUTED EVEN IN STANDALONE APKs TO FORCE THE WEBVIEW DIALOG
         const permission = await Notification.requestPermission();
         console.log('Permission result:', permission);
         this.hasPermission = permission === 'granted';
         return this.hasPermission;
       } catch (error) {
-        console.error('Error requesting notification permission:', error);
+        console.error('Error requesting notification permission (Falling back to standalone assumption):', error);
+        // If the permission request explicitly crashes (common in strict WebViews without permission delegates),
+        // fallback to assuming it works via the SW message bus or custom bridges.
+        if (this.isStandalone()) {
+           this.hasPermission = true;
+           return true; 
+        }
         return false;
       }
     }
@@ -327,9 +333,34 @@ class NotificationService {
     if ('serviceWorker' in navigator) {
       try {
         const registration = await navigator.serviceWorker.ready;
-        if (registration && 'showNotification' in registration) {
-          await registration.showNotification(options.title, swOptions);
-          return; // Exit successfully if SW handled it
+        if (registration) {
+          // Force permission check directly before SW trigger if missing
+          if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+             await this.requestPermission();
+          }
+
+          let handledViaSW = false;
+
+          // Strategy A: Message Bus Bypass (Extremely reliable for wrapped WebViews)
+          if (registration.active) {
+            registration.active.postMessage({
+              type: 'SHOW_NOTIFICATION',
+              title: options.title,
+              options: swOptions
+            });
+            handledViaSW = true;
+          }
+
+          // Strategy B: Standard Registration Call
+          if ('showNotification' in registration) {
+            // Some strict browsers crash here if permissions were stealth-blocked
+            await registration.showNotification(options.title, swOptions).catch(e => console.warn('showNotification failed:', e));
+            handledViaSW = true;
+          }
+
+          if (handledViaSW) {
+            return; // Exit successfully if SW handled it
+          }
         }
       } catch (swError) {
         console.warn('SW notification failed:', swError);
