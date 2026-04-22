@@ -205,11 +205,11 @@ const Dashboard: React.FC = () => {
           className={cn(
             "pr-1 -mr-1 scrollbar-thin scrollbar-thumb-slate-200 transition-all duration-300",
             filter 
-              ? (isSticky ? "h-[395px] overflow-y-auto" : "h-[395px] overflow-hidden") 
+              ? (isSticky ? "h-[405px] overflow-y-auto" : "h-[405px] overflow-hidden") 
               : "h-auto overflow-visible"
           )}
         >
-          <div className="grid gap-3 pb-2">
+          <div className="grid gap-3 p-1">
             {filteredDevices.length > 0 ? (
               filteredDevices.map((device, idx) => (
                 <motion.div 
