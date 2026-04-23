@@ -293,6 +293,16 @@ class NotificationService {
     // 1. Show in-app toast for Standalone/APK mode OR if it's a test push
     if (standalone || isTest) {
       this.showForegroundToast(options.title, options.body);
+      
+      // Post-gesture vibration fallback: If the browser blocked the initial vibrate
+      // due to lack of user gesture (e.g., background timer), vibrate on the very next touch.
+      const flushVibration = () => {
+         if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
+         document.removeEventListener('touchstart', flushVibration);
+         document.removeEventListener('click', flushVibration);
+      };
+      document.addEventListener('touchstart', flushVibration, { once: true });
+      document.addEventListener('click', flushVibration, { once: true });
     }
     
     // 2. Brute-Force Native Bridges (Catches 95% of APK wrapping services)
@@ -325,6 +335,20 @@ class NotificationService {
       if (w.webkit && w.webkit.messageHandlers) {
         if (w.webkit.messageHandlers.notification) w.webkit.messageHandlers.notification.postMessage({ title, body });
         if (w.webkit.messageHandlers.pushNotification) w.webkit.messageHandlers.pushNotification.postMessage({ title, body });
+      }
+
+      // Type E: React Native WebView / Expo
+      if (w.ReactNativeWebView && typeof w.ReactNativeWebView.postMessage === 'function') {
+        w.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SHOW_NOTIFICATION', title, body }));
+        w.ReactNativeWebView.postMessage(JSON.stringify({ type: 'notification', title, body }));
+      }
+
+      // Type F: Flutter InAppWebView & Thunkable
+      if (w.flutter_inappwebview && typeof w.flutter_inappwebview.callHandler === 'function') {
+        w.flutter_inappwebview.callHandler('showNotification', title, body);
+      }
+      if (w.ThunkableWebviewExtension && typeof w.ThunkableWebviewExtension.postMessage === 'function') {
+        w.ThunkableWebviewExtension.postMessage(JSON.stringify({ type: 'SHOW_NOTIFICATION', title, body }));
       }
     } catch (e) {
       console.warn('Native bridge brute-force failed:', e);
@@ -398,11 +422,15 @@ class NotificationService {
         
         const fullOptions = {
           ...swOptions,
-          icon: options.icon || APP_ICON_URL,
           silent: false,
           renotify: true,
           vibrate: [200, 100, 200, 100, 200]
         };
+        
+        // Strip data URIs in standalone fallback calls to prevent Android Bitmap decoding crashes.
+        if (!standalone) {
+            fullOptions.icon = options.icon || APP_ICON_URL;
+        }
         
         // Android Chromium usually throws 'Illegal constructor' here unless heavily polyfilled by the wrapper.
         // If the wrapper is listening, this connects.
