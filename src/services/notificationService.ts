@@ -444,6 +444,30 @@ class NotificationService {
   public async registerWebPushToken(userId: string): Promise<{success: boolean, message: string}> {
     if (!userId) return { success: false, message: 'No user ID' };
     
+    // Step 1: Brute-Force search for Native Wrapper token injections
+    // Some good wrappers strip the Notification API but inject the token as a variable.
+    try {
+      const w = window as any;
+      let nativeToken = null;
+      
+      if (w.Android && typeof w.Android.getFcmToken === 'function') nativeToken = w.Android.getFcmToken();
+      else if (w.Android && typeof w.Android.getToken === 'function') nativeToken = w.Android.getToken();
+      else if (w.WTN && typeof w.WTN.getFcmToken === 'function') nativeToken = w.WTN.getFcmToken();
+      else if (w.WTN && w.WTN.fcmToken) nativeToken = w.WTN.fcmToken;
+      else if (w.median_onesignal_player_id) nativeToken = w.median_onesignal_player_id; // GoNative/Median fallback
+      else if (w.JSBridge && typeof w.JSBridge.getFcmToken === 'function') nativeToken = w.JSBridge.getFcmToken();
+      
+      if (nativeToken && typeof nativeToken === 'string') {
+        // We found a token exposed by the wrapper!
+        await updateDoc(doc(db, 'users', userId), { fcmToken: nativeToken });
+        console.log('Native Wrapper Token registered:', nativeToken);
+        return { success: true, message: 'Native Token Extracted!' };
+      }
+    } catch (e) {
+      console.warn('Silent failure extracting native wrapper tokens:', e);
+    }
+
+    // Step 2: Fallback to standard Firebase Web Push SDK
     // Check if browser natively supports the Firebase Messaging standard
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window) {
       try {
@@ -454,7 +478,7 @@ class NotificationService {
         
         const vapidKey = (import.meta as any).env.VITE_FCM_VAPID_KEY;
         if (!vapidKey) {
-           return { success: false, message: 'Missing VITE_FCM_VAPID_KEY. You must add the Web Push Key to Secrets.' };
+           return { success: false, message: 'Missing VITE_FCM_VAPID_KEY.' };
         }
 
         const currentToken = await getToken(messaging, { 
@@ -468,7 +492,7 @@ class NotificationService {
              fcmToken: currentToken
           });
           console.log('Web Push Token registered:', currentToken);
-          return { success: true, message: 'Token saved securely!' };
+          return { success: true, message: 'Web Token Bound!' };
         } else {
           return { success: false, message: 'User blocked permissions.' };
         }
@@ -477,7 +501,8 @@ class NotificationService {
         return { success: false, message: err.message || 'FCM Client SDK Error' };
       }
     }
-    return { success: false, message: 'Browser restricts standard Web Push API.' };
+    
+    return { success: false, message: 'APK blocks API & hides Token.' };
   }
 
   public async triggerRemoteBouncePush(userId: string, title: string, body: string): Promise<{success: boolean, error?: string}> {
