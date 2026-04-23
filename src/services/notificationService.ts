@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface NotificationOptions {
@@ -440,6 +440,41 @@ class NotificationService {
       }
     }
   }
+  public async triggerRemoteBouncePush(userId: string, title: string, body: string) {
+    if (!userId) return;
+    
+    try {
+      // Step 1: Look up this user's registered FCM Token from Firestore
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const fcmToken = userDoc.data()?.fcmToken || userDoc.data()?.pushToken;
+      
+      if (!fcmToken) {
+        console.warn('[Remote Push Bounce] Cancelled: User has no registered native push token (fcmToken)');
+        return;
+      }
+
+      console.log(`[Remote Push Bounce] Hitting local V1 proxy...`);
+      
+      // Step 2: Ping our custom Express backend proxy which is running the Firebase Admin SDK (FCM V1 API)
+      const response = await fetch('/api/push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: fcmToken,
+          title: title, 
+          body: body
+        })
+      });
+
+      const result = await response.json();
+      console.log(`[Remote Push Bounce] FCM V1 Proxy Result:`, result);
+    } catch (err) {
+      console.error('[Remote Push Bounce] Server proxy request failed:', err);
+    }
+  }
+
   public async checkDeviceExpirations(userId: string) {
     if (!userId) return;
 
@@ -462,11 +497,15 @@ class NotificationService {
         if (expiring.length > 0) summaryBody += `${expiring.length} expiring soon`;
         summaryBody = summaryBody.replace(/, $/, '');
 
-        this.notify({
-          title: 'Device Maintenance Required',
-          body: `You have ${totalAlerts} devices that require attention: ${summaryBody}.`,
-          tag: 'summary-alert'
-        });
+        const title = 'Device Maintenance Required';
+        const body = `You have ${totalAlerts} devices that require attention: ${summaryBody}.`;
+
+        this.notify({ title, body, tag: 'summary-alert' });
+        
+        // Push the bounce payload to hit the Native wrapper via external servers
+        if (this.isStandalone()) {
+           this.triggerRemoteBouncePush(userId, title, body);
+        }
       } else if (totalAlerts === 1) {
         // Single alert path
         const alert = alerts[0];
@@ -484,11 +523,12 @@ class NotificationService {
           body = `Your device "${alert.deviceName}" expires on ${alert.date.toLocaleDateString()}.`;
         }
 
-        this.notify({
-          title,
-          body,
-          tag: `${alert.type}-${alert.deviceId}`
-        });
+        this.notify({ title, body, tag: `${alert.type}-${alert.deviceId}` });
+        
+        // Push the bounce payload to hit the Native wrapper via external servers
+        if (this.isStandalone()) {
+           this.triggerRemoteBouncePush(userId, title, body);
+        }
       }
     } catch (error) {
       console.error('Error checking device expirations:', error);
