@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell } from 'lucide-react';
+import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell, Server } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
 import { deviceService } from '../services/deviceService';
@@ -108,6 +108,35 @@ const Profile: React.FC = () => {
     
     setNotifSuccess(true);
     setTimeout(() => setNotifSuccess(false), 2000);
+  };
+
+  const [fcmSuccess, setFcmSuccess] = useState(false);
+  const [fcmLoading, setFcmLoading] = useState(false);
+  const [fcmStatusMsg, setFcmStatusMsg] = useState('');
+
+  const handleTestFCMPush = async () => {
+    if (!user) return;
+    setFcmLoading(true);
+    setFcmStatusMsg('');
+    try {
+      const result = await notificationService.triggerRemoteBouncePush(
+        user.uid,
+        'Remote FCM Test',
+        'This push was routed securely through the Node.js V1 proxy!'
+      );
+      
+      if (result.success) {
+        setFcmSuccess(true);
+        setFcmStatusMsg('FCM Sent Successfully');
+        setTimeout(() => setFcmSuccess(false), 4000);
+      } else {
+        setFcmStatusMsg(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setFcmStatusMsg(e.message || 'Client integration error');
+    } finally {
+      setFcmLoading(false);
+    }
   };
 
   if (!profile) return null;
@@ -231,7 +260,7 @@ const Profile: React.FC = () => {
                       <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : (notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : notificationService.getPermissionStatus() === 'pwa-required' ? 'text-orange-400' : 'text-blue-400'))} />
                       <div className="text-left">
                         <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
-                          {notifSuccess ? 'Signal Transmitted' : 'Test Push Pipeline'}
+                          {notifSuccess ? 'Signal Transmitted' : 'Test Local Pipeline'}
                         </span>
                         <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
                           Status: {notificationService.getPermissionStatus().replace('-', ' ')}
@@ -243,6 +272,29 @@ const Profile: React.FC = () => {
                     ) : (
                       <RefreshCw className="h-3 w-3 text-slate-600" />
                     )}
+                  </button>
+
+                  <button 
+                    onClick={handleTestFCMPush}
+                    disabled={fcmLoading}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-blue-500/10 border border-blue-500/20 px-4 py-3 transition-all hover:bg-blue-500/20 active:scale-95 disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Server className={cn("h-3.5 w-3.5 shrink-0", fcmSuccess ? 'text-emerald-400' : 'text-blue-400')} />
+                      <div className="text-left min-w-0 pr-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-blue-400/90 truncate">
+                          {fcmSuccess ? 'V1 Payload Routed' : 'Test FCM V1 Backend'}
+                        </span>
+                        <span className={cn("block text-[8px] font-bold mt-0.5 truncate", fcmStatusMsg && !fcmSuccess ? "text-red-400" : "text-blue-500/70")}>
+                          {fcmStatusMsg || 'Requires registered mobile fcmToken'}
+                        </span>
+                      </div>
+                    </div>
+                    {fcmLoading ? (
+                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-blue-400" />
+                    ) : fcmSuccess ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                    ) : null}
                   </button>
 
                   {notificationService.getPermissionStatus() === 'pwa-required' && (

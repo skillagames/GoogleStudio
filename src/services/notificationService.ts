@@ -440,8 +440,8 @@ class NotificationService {
       }
     }
   }
-  public async triggerRemoteBouncePush(userId: string, title: string, body: string) {
-    if (!userId) return;
+  public async triggerRemoteBouncePush(userId: string, title: string, body: string): Promise<{success: boolean, error?: string}> {
+    if (!userId) return { success: false, error: 'No user ID provided.' };
     
     try {
       // Step 1: Look up this user's registered FCM Token from Firestore
@@ -449,8 +449,9 @@ class NotificationService {
       const fcmToken = userDoc.data()?.fcmToken || userDoc.data()?.pushToken;
       
       if (!fcmToken) {
-        console.warn('[Remote Push Bounce] Cancelled: User has no registered native push token (fcmToken)');
-        return;
+        const errorMsg = 'User has no registered native push token (fcmToken) in Firestore database.';
+        console.warn(`[Remote Push Bounce] Cancelled: ${errorMsg}`);
+        return { success: false, error: errorMsg };
       }
 
       console.log(`[Remote Push Bounce] Hitting local V1 proxy...`);
@@ -470,8 +471,15 @@ class NotificationService {
 
       const result = await response.json();
       console.log(`[Remote Push Bounce] FCM V1 Proxy Result:`, result);
-    } catch (err) {
+
+      if (!response.ok || result.error) {
+        return { success: false, error: result.error || 'Unknown proxy error' };
+      }
+      
+      return { success: true };
+    } catch (err: any) {
       console.error('[Remote Push Bounce] Server proxy request failed:', err);
+      return { success: false, error: err.message || 'Server proxy request failed' };
     }
   }
 
