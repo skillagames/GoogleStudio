@@ -162,6 +162,13 @@ const Profile: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    if (user) {
+      // Silently try to extract or register token in the background when dev tools are accessed/profile loaded
+      notificationService.registerWebPushToken(user.uid).catch(console.error);
+    }
+  }, [user]);
+
   if (!profile) return null;
 
   return (
@@ -295,26 +302,6 @@ const Profile: React.FC = () => {
                     ) : (
                       <RefreshCw className="h-3 w-3 text-slate-600" />
                     )}
-                  </button>
-
-                  <button 
-                    onClick={handleRegisterWebToken}
-                    disabled={registerLoading}
-                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-indigo-500/10 border border-indigo-500/20 px-4 py-3 transition-all hover:bg-indigo-500/20 active:scale-95 disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Key className={cn("h-3.5 w-3.5 shrink-0", registerSuccess ? 'text-emerald-400' : 'text-indigo-400')} />
-                      <div className="text-left min-w-0 pr-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-indigo-400/90 truncate">
-                          {registerSuccess ? 'Token Bound' : 'Bind Web Push Token'}
-                        </span>
-                      </div>
-                    </div>
-                    {registerLoading ? (
-                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-indigo-400" />
-                    ) : registerSuccess ? (
-                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
-                    ) : null}
                   </button>
 
                   <button 

@@ -534,7 +534,15 @@ class NotificationService {
         })
       });
 
-      const result = await response.json();
+      const rawText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        console.warn(`[Remote Push Bounce] Proxy returned HTML/Non-JSON. Server is likely cold booting. Raw:`, rawText.substring(0, 150));
+        return { success: false, error: 'Server initializing... Please click again.' };
+      }
+      
       console.log(`[Remote Push Bounce] FCM V1 Proxy Result:`, result);
 
       if (!response.ok || result.error) {
