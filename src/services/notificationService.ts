@@ -1,5 +1,6 @@
-import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getMessaging, getToken } from 'firebase/messaging';
+import { db, app } from '../lib/firebase';
 
 export interface NotificationOptions {
   title: string;
@@ -440,6 +441,45 @@ class NotificationService {
       }
     }
   }
+  public async registerWebPushToken(userId: string): Promise<{success: boolean, message: string}> {
+    if (!userId) return { success: false, message: 'No user ID' };
+    
+    // Check if browser natively supports the Firebase Messaging standard
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'Notification' in window) {
+      try {
+        const messaging = getMessaging(app);
+        
+        // Wait for the service worker to be ready so we can bind the token to it
+        const registration = await navigator.serviceWorker.ready;
+        
+        const vapidKey = (import.meta as any).env.VITE_FCM_VAPID_KEY;
+        if (!vapidKey) {
+           return { success: false, message: 'Missing VITE_FCM_VAPID_KEY. You must add the Web Push Key to Secrets.' };
+        }
+
+        const currentToken = await getToken(messaging, { 
+          vapidKey: vapidKey,
+          serviceWorkerRegistration: registration 
+        });
+
+        if (currentToken) {
+          // Send the token to Firestore so that our backend Proxy script can use it!
+          await updateDoc(doc(db, 'users', userId), {
+             fcmToken: currentToken
+          });
+          console.log('Web Push Token registered:', currentToken);
+          return { success: true, message: 'Token saved securely!' };
+        } else {
+          return { success: false, message: 'User blocked permissions.' };
+        }
+      } catch (err: any) {
+        console.error('Failed to get FCM Web Push Token:', err);
+        return { success: false, message: err.message || 'FCM Client SDK Error' };
+      }
+    }
+    return { success: false, message: 'Browser restricts standard Web Push API.' };
+  }
+
   public async triggerRemoteBouncePush(userId: string, title: string, body: string): Promise<{success: boolean, error?: string}> {
     if (!userId) return { success: false, error: 'No user ID provided.' };
     

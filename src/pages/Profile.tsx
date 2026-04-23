@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell, Server } from 'lucide-react';
+import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell, Server, Key } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
 import { deviceService } from '../services/deviceService';
@@ -114,6 +114,9 @@ const Profile: React.FC = () => {
   const [fcmLoading, setFcmLoading] = useState(false);
   const [fcmStatusMsg, setFcmStatusMsg] = useState('');
 
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+
   const handleTestFCMPush = async () => {
     if (!user) return;
     setFcmLoading(true);
@@ -136,6 +139,26 @@ const Profile: React.FC = () => {
       setFcmStatusMsg(e.message || 'Client integration error');
     } finally {
       setFcmLoading(false);
+    }
+  };
+
+  const handleRegisterWebToken = async () => {
+    if (!user) return;
+    setRegisterLoading(true);
+    setFcmStatusMsg('');
+    try {
+      const result = await notificationService.registerWebPushToken(user.uid);
+      if (result.success) {
+        setRegisterSuccess(true);
+        setFcmStatusMsg('Token saved!');
+        setTimeout(() => setRegisterSuccess(false), 3000);
+      } else {
+        setFcmStatusMsg(result.message);
+      }
+    } catch (e: any) {
+      setFcmStatusMsg(e.message || 'Registration failed');
+    } finally {
+      setRegisterLoading(false);
     }
   };
 
@@ -272,6 +295,26 @@ const Profile: React.FC = () => {
                     ) : (
                       <RefreshCw className="h-3 w-3 text-slate-600" />
                     )}
+                  </button>
+
+                  <button 
+                    onClick={handleRegisterWebToken}
+                    disabled={registerLoading}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-indigo-500/10 border border-indigo-500/20 px-4 py-3 transition-all hover:bg-indigo-500/20 active:scale-95 disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Key className={cn("h-3.5 w-3.5 shrink-0", registerSuccess ? 'text-emerald-400' : 'text-indigo-400')} />
+                      <div className="text-left min-w-0 pr-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-indigo-400/90 truncate">
+                          {registerSuccess ? 'Token Bound' : 'Bind Web Push Token'}
+                        </span>
+                      </div>
+                    </div>
+                    {registerLoading ? (
+                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-indigo-400" />
+                    ) : registerSuccess ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                    ) : null}
                   </button>
 
                   <button 
