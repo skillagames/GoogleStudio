@@ -143,6 +143,54 @@ class NotificationService {
     return Notification.permission as any;
   }
 
+  public async getVibrationDiagnostics() {
+    const isSupported = typeof navigator !== 'undefined' && 'vibrate' in navigator;
+    const permission = this.getPermissionStatus();
+    
+    let swStatus = 'unknown';
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      swStatus = reg ? (reg.active ? 'active' : 'installed') : 'none';
+    }
+
+    let swLogs = [];
+    try {
+      if (typeof indexedDB !== 'undefined') {
+        swLogs = await new Promise<any[]>((resolve) => {
+          const req = indexedDB.open('sw-diag-logs', 1);
+          req.onsuccess = (e: any) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('logs')) {
+                resolve([]);
+                return;
+            }
+            const store = db.transaction('logs', 'readonly').objectStore('logs');
+            const getAll = store.getAll();
+            getAll.onsuccess = () => resolve(getAll.result);
+          };
+          req.onerror = () => resolve([]);
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to read SW logs:', e);
+    }
+
+    return {
+      apiSupported: isSupported,
+      permission,
+      serviceWorker: swStatus,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      logs: swLogs
+    };
+  }
+
+  public testLocalVibrate(pattern: number[] = [400]): boolean {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      return navigator.vibrate(pattern);
+    }
+    return false;
+  }
+
   private showForegroundToast(title: string, body: string) {
     if (typeof document === 'undefined') return;
 
@@ -283,16 +331,12 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
-    // 0. Trigger immediate physical feedback (Strong pattern)
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200, 100, 200]);
-    }
-
     const standalone = this.isStandalone();
     const isTest = options.tag === 'test-notification';
 
     // 1. Show in-app toast for Standalone/APK mode OR if it's a test push
-    if (standalone || isTest) {
+    // Obey the developer settings toggle for toasts (default to false to avoid double native notifs)
+    if ((standalone || isTest) && localStorage.getItem('showFallbackToasts') === 'true') {
       this.showForegroundToast(options.title, options.body);
       
       // Post-gesture vibration fallback: If the browser blocked the initial vibrate
@@ -359,18 +403,15 @@ class NotificationService {
     const swOptions: any = {
       body: options.body,
       tag: options.tag || 'iot-notif-' + Date.now(),
-      vibrate: [200, 100, 200, 100, 200],
-      requireInteraction: false
+      requireInteraction: false,
+      actions: [
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
     };
 
     if (!standalone) {
       swOptions.icon = options.icon || APP_ICON_URL;
       swOptions.badge = APP_ICON_URL;
-    }
-
-    // Secondary raw vibrate trigger just in case the OS blocks background vibration arrays
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200, 100, 200]);
     }
 
     // 3. Service Worker Path (Recommended for Android/APK)
@@ -424,8 +465,7 @@ class NotificationService {
         const fullOptions = {
           ...swOptions,
           silent: false,
-          renotify: true,
-          vibrate: [200, 100, 200, 100, 200]
+          renotify: true
         };
         
         // Strip data URIs in standalone fallback calls to prevent Android Bitmap decoding crashes.
@@ -441,6 +481,22 @@ class NotificationService {
       }
     }
   }
+  public async updateFCMToken(userId: string, token: string): Promise<boolean> {
+    if (!userId || !token) return false;
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        fcmToken: token,
+        tokenSource: 'native_bridge',
+        tokenUpdatedAt: new Date().toISOString()
+      });
+      console.log('[NotificationService] Explicit token update successful:', token);
+      return true;
+    } catch (e) {
+      console.error('[NotificationService] Failed to update token:', e);
+      return false;
+    }
+  }
+
   public async registerWebPushToken(userId: string): Promise<{success: boolean, message: string}> {
     if (!userId) return { success: false, message: 'No user ID' };
     
@@ -454,7 +510,6 @@ class NotificationService {
       else if (w.Android && typeof w.Android.getToken === 'function') nativeToken = w.Android.getToken();
       else if (w.WTN && typeof w.WTN.getFcmToken === 'function') nativeToken = w.WTN.getFcmToken();
       else if (w.WTN && w.WTN.fcmToken) nativeToken = w.WTN.fcmToken;
-      else if (w.median_onesignal_player_id) nativeToken = w.median_onesignal_player_id; // GoNative/Median fallback
       else if (w.JSBridge && typeof w.JSBridge.getFcmToken === 'function') nativeToken = w.JSBridge.getFcmToken();
       
       if (nativeToken && typeof nativeToken === 'string') {
@@ -489,7 +544,8 @@ class NotificationService {
         if (currentToken) {
           // Send the token to Firestore so that our backend Proxy script can use it!
           await updateDoc(doc(db, 'users', userId), {
-             fcmToken: currentToken
+             fcmToken: currentToken,
+             tokenSource: 'web_native_sdk'
           });
           console.log('Web Push Token registered:', currentToken);
           return { success: true, message: 'Web Token Bound!' };
@@ -505,23 +561,54 @@ class NotificationService {
     return { success: false, message: 'APK blocks API & hides Token.' };
   }
 
-  public async triggerRemoteBouncePush(userId: string, title: string, body: string): Promise<{success: boolean, error?: string}> {
+  public async triggerPureFirebasePush(userId: string, title?: string, body?: string): Promise<{success: boolean, error?: string}> {
     if (!userId) return { success: false, error: 'No user ID provided.' };
     
     try {
-      // Step 1: Look up this user's registered FCM Token from Firestore
       const userDoc = await getDoc(doc(db, 'users', userId));
       const fcmToken = userDoc.data()?.fcmToken || userDoc.data()?.pushToken;
       
       if (!fcmToken) {
-        const errorMsg = 'User has no registered native push token (fcmToken) in Firestore database.';
-        console.warn(`[Remote Push Bounce] Cancelled: ${errorMsg}`);
-        return { success: false, error: errorMsg };
+        return { success: false, error: 'User has no registered push token (fcmToken) in database.' };
       }
-
-      console.log(`[Remote Push Bounce] Hitting local V1 proxy...`);
       
-      // Step 2: Ping our custom Express backend proxy which is running the Firebase Admin SDK (FCM V1 API)
+      const response = await fetch('/api/firebase-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: fcmToken,
+          title: title, 
+          body: body
+        })
+      });
+      
+      const payload = await response.json();
+      if (!response.ok) {
+        return { success: false, error: payload.error || 'Server rejected push' };
+      }
+      
+      return { success: true };
+    } catch (err: any) {
+      console.error('Failed to trigger PURE FIREBASE PUSH API:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  public async triggerRemoteBouncePush(userId: string, title: string, body: string): Promise<{success: boolean, error?: string}> {
+    if (!userId) return { success: false, error: 'No user ID provided.' };
+    
+    try {
+      // Look up this user's registered FCM Token from Firestore
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      const fcmToken = userDoc.data()?.fcmToken || userDoc.data()?.pushToken;
+      
+      if (!fcmToken) {
+        return { success: false, error: 'User has no registered push token (fcmToken) in database.' };
+      }
+      
+      // Ping internal Express proxy over FCM V1 API
       const response = await fetch('/api/push', {
         method: 'POST',
         headers: {
@@ -539,19 +626,17 @@ class NotificationService {
       try {
         result = JSON.parse(rawText);
       } catch (parseError) {
-        console.warn(`[Remote Push Bounce] Proxy returned HTML/Non-JSON. Server is likely cold booting. Raw:`, rawText.substring(0, 150));
-        return { success: false, error: 'Server initializing... Please click again.' };
+        console.warn(`[Push Proxy] Server cold booted or returned Non-JSON.`);
+        return { success: false, error: 'Server initializing... Please try again.' };
       }
       
-      console.log(`[Remote Push Bounce] FCM V1 Proxy Result:`, result);
-
       if (!response.ok || result.error) {
         return { success: false, error: result.error || 'Unknown proxy error' };
       }
       
       return { success: true };
     } catch (err: any) {
-      console.error('[Remote Push Bounce] Server proxy request failed:', err);
+      console.error('[Push Proxy] Request failed:', err);
       return { success: false, error: err.message || 'Server proxy request failed' };
     }
   }

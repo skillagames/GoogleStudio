@@ -41,13 +41,25 @@ app.post('/api/push', async (req, res) => {
     
     if (!token) return res.status(400).json({ error: 'Missing token' });
 
+    // Provide default safe fallbacks to prevent undefined payload crash
+    const safeTitle = title || 'Device Alert';
+    const safeBody = body || 'Check your devices.';
+
+    const pushTargetId = 'test_' + Date.now();
     const message = {
-      notification: { title, body },
+      notification: { 
+        title: safeTitle, 
+        body: safeBody 
+      },
+      data: {
+        targetId: pushTargetId
+      },
       token: token,
       android: {
         priority: 'high' as const,
         notification: {
-            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            title: safeTitle,
+            body: safeBody,
             sound: 'default'
         }
       }
@@ -57,6 +69,42 @@ app.post('/api/push', async (req, res) => {
     res.json({ success: true, response });
   } catch (error: any) {
     console.error('FCM V1 Send Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/firebase-push', async (req, res) => {
+  if (!initAdmin()) {
+    return res.status(500).json({ error: 'Firebase Admin not configured. Needs FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY secrets.' });
+  }
+
+  try {
+    const { token, title, body } = req.body;
+    
+    if (!token) return res.status(400).json({ error: 'Missing token' });
+
+    const safeTitle = title || 'Test Firebase Notification';
+    const safeBody = body || 'This is exactly like a Firebase Console push.';
+
+    // Send a pure simple message like the Firebase Console does, targeting the Android app
+    const message = {
+      notification: { 
+        title: safeTitle, 
+        body: safeBody 
+      },
+      android: {
+        restrictedPackageName: 'Iot.connect.app',
+        notification: {
+          sound: 'default'
+        }
+      },
+      token: token
+    };
+
+    const response = await admin.messaging().send(message);
+    res.json({ success: true, response });
+  } catch (error: any) {
+    console.error('Firebase Push Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

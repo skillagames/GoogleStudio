@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell, Server, Key } from 'lucide-react';
+import { User, Shield, Calendar, LogOut, Terminal, Database, RefreshCw, CheckCircle2, Trash2, AlertTriangle, ChevronDown, Edit3, Save, X, Eye, EyeOff, Bell, BellOff, BellRing, Server, Key, Activity, LifeBuoy } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { auth, db } from '../lib/firebase';
 import { deviceService } from '../services/deviceService';
@@ -15,6 +15,13 @@ const Profile: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [isDevExpanded, setIsDevExpanded] = useState(false);
+  const [showToasts, setShowToasts] = useState(() => localStorage.getItem('showFallbackToasts') === 'true');
+
+  const toggleToasts = () => {
+    const newVal = !showToasts;
+    setShowToasts(newVal);
+    localStorage.setItem('showFallbackToasts', newVal ? 'true' : 'false');
+  };
   
   // Edit Profile State
   const [showEditModal, setShowEditModal] = useState(false);
@@ -23,6 +30,14 @@ const Profile: React.FC = () => {
 
   const handleLogout = () => {
     auth.signOut();
+  };
+
+  const toggleDevTools = () => {
+    const nextState = !isDevExpanded;
+    setIsDevExpanded(nextState);
+    if (nextState) {
+      refreshVibeDiag();
+    }
   };
 
   const handleOpenEdit = () => {
@@ -95,14 +110,49 @@ const Profile: React.FC = () => {
 
   const [notifSuccess, setNotifSuccess] = useState(false);
 
+  const buildDeviceAlertMessage = async () => {
+    if (!user) return { title: 'Pipeline Test', body: 'System operational.' };
+    const alerts = await notificationService.getAlerts(user.uid);
+    const totalAlerts = alerts.length;
+
+    if (totalAlerts === 0) {
+      return { title: 'Systems Nominal', body: 'All devices are healthy and active. Test complete.' };
+    }
+
+    const inactive = alerts.filter(a => a.type === 'inactive');
+    const expired = alerts.filter(a => a.type === 'expired');
+    const expiring = alerts.filter(a => a.type === 'expiring');
+
+    if (totalAlerts > 1) {
+      let summaryBody = '';
+      if (expired.length > 0) summaryBody += `${expired.length} expired, `;
+      if (inactive.length > 0) summaryBody += `${inactive.length} inactive, `;
+      if (expiring.length > 0) summaryBody += `${expiring.length} expiring soon`;
+      summaryBody = summaryBody.replace(/, $/, '');
+
+      return {
+        title: 'Device Maintenance Required',
+        body: `You have ${totalAlerts} devices that require attention: ${summaryBody}.`
+      };
+    } else {
+      const alert = alerts[0];
+      if (alert.type === 'inactive') {
+        return { title: 'Activation Required', body: `Device "${alert.deviceName}" needs a subscription.` };
+      } else if (alert.type === 'expired') {
+        return { title: 'Device Expired', body: `Subscription for "${alert.deviceName}" has expired.` };
+      } else {
+        return { title: 'Device Expiring Soon', body: `Subscription for "${alert.deviceName}" expires soon.` };
+      }
+    }
+  };
+
   const handleTestNotification = async () => {
     if (!user) return;
-    const alerts = await notificationService.getAlerts(user.uid);
-    const expiredCount = alerts.filter(a => a.type === 'expired').length;
+    const alertMsg = await buildDeviceAlertMessage();
 
     await notificationService.notify({
-      title: 'Device Status Alert',
-      body: `You have (${expiredCount}) expired devices that require attention.`,
+      title: alertMsg.title,
+      body: alertMsg.body,
       tag: 'test-notification'
     });
     
@@ -113,24 +163,99 @@ const Profile: React.FC = () => {
   const [fcmSuccess, setFcmSuccess] = useState(false);
   const [fcmLoading, setFcmLoading] = useState(false);
   const [fcmStatusMsg, setFcmStatusMsg] = useState('');
+  
+  const [pureFbSuccess, setPureFbSuccess] = useState(false);
+  const [pureFbLoading, setPureFbLoading] = useState(false);
+  const [pureFbStatusMsg, setPureFbStatusMsg] = useState('');
 
-  const [registerSuccess, setRegisterSuccess] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
+  const [vibeDiag, setVibeDiag] = useState<any>(null);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PUSH_ECHO') {
+        localStorage.setItem('lastPushResult', JSON.stringify({
+          targetId: event.data.targetId,
+          vibrated: event.data.vibrated
+        }));
+      }
+    };
+    
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleMessage);
+      return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }
+  }, []);
+
+  const [bridgeStatus, setBridgeStatus] = useState<Record<string, boolean>>({});
+  const [rawStatus, setRawStatus] = useState<string>('Initializing Scanner...');
+
+  useEffect(() => {
+    const checkBridges = () => {
+      // Direct raw status check - check logs array or single status
+      const logs = (window as any).__W2N_LOGS__;
+      if (Array.isArray(logs) && logs.length > 0) {
+        setRawStatus(logs.join(' | '));
+      } else {
+        setRawStatus((window as any).__W2N_RAW_STATUS || 'Searching...');
+      }
+
+      // Check if a stolen token appeared
+      const stolen = (window as any).__NATIVE_TOKEN_STOLEN || localStorage.getItem('native_fcm_token');
+      if (stolen && stolen !== localStorage.getItem('last_stolen_fcm')) {
+        localStorage.setItem('last_stolen_fcm', stolen);
+        // Save back to user profile quickly
+        if (user) {
+          notificationService.updateFCMToken(user.uid, stolen).catch(console.error);
+        }
+        setRawStatus('Extracted Token: ' + stolen.substring(0, 15) + '...');
+      }
+      
+      const status: Record<string, boolean> = {};
+      ['webToNative', 'w2n', 'WTN', 'Native', 'Android', 'android', 'wtn', 'webtonative', 'WebToNative', 'JSBridge', 'AndroidInterface', 'webkit', 'flutter_inappwebview'].forEach(b => {
+        status[b] = !!(window as any)[b];
+      });
+      setBridgeStatus(status);
+    };
+    
+    checkBridges();
+    const interval = setInterval(checkBridges, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const refreshVibeDiag = async () => {
+    const diag = await notificationService.getVibrationDiagnostics();
+    setVibeDiag(diag);
+  };
+
+  const handleVibeTest = () => {
+    const success = notificationService.testLocalVibrate([100, 50, 100]);
+    if (!success) {
+      setFcmStatusMsg('Browser API rejected vibration');
+    } else {
+      setFcmStatusMsg('Hardware Vibe Signal Sent');
+    }
+    refreshVibeDiag();
+  };
 
   const handleTestFCMPush = async () => {
     if (!user) return;
     setFcmLoading(true);
     setFcmStatusMsg('');
+    
+    const pushTargetId = 'test_' + Date.now();
+    localStorage.setItem('lastPushTargetId', pushTargetId);
+
     try {
+      const alertMsg = await buildDeviceAlertMessage();
       const result = await notificationService.triggerRemoteBouncePush(
         user.uid,
-        'Remote FCM Test',
-        'This push was routed securely through the Node.js V1 proxy!'
+        alertMsg.title,
+        alertMsg.body
       );
       
       if (result.success) {
         setFcmSuccess(true);
-        setFcmStatusMsg('FCM Sent Successfully');
+        setFcmStatusMsg('FCM Signal Dispatched Successfully');
         setTimeout(() => setFcmSuccess(false), 4000);
       } else {
         setFcmStatusMsg(result.error || 'Unknown error');
@@ -142,23 +267,29 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleRegisterWebToken = async () => {
+  const handleTestPureFirebasePush = async () => {
     if (!user) return;
-    setRegisterLoading(true);
-    setFcmStatusMsg('');
+    setPureFbLoading(true);
+    setPureFbStatusMsg('');
+    
     try {
-      const result = await notificationService.registerWebPushToken(user.uid);
+      const result = await notificationService.triggerPureFirebasePush(
+        user.uid,
+        "IoT Android App",
+        "Firebase Native Push Notification Working!"
+      );
+      
       if (result.success) {
-        setRegisterSuccess(true);
-        setFcmStatusMsg('Token saved!');
-        setTimeout(() => setRegisterSuccess(false), 3000);
+        setPureFbSuccess(true);
+        setPureFbStatusMsg('Pure Firebase Signal Dispatched');
+        setTimeout(() => setPureFbSuccess(false), 4000);
       } else {
-        setFcmStatusMsg(result.message);
+        setPureFbStatusMsg(result.error || 'Failed to dispatch');
       }
-    } catch (e: any) {
-      setFcmStatusMsg(e.message || 'Registration failed');
+    } catch (err: any) {
+      setPureFbStatusMsg(err.message || 'Unknown network error');
     } finally {
-      setRegisterLoading(false);
+      setPureFbLoading(false);
     }
   };
 
@@ -220,7 +351,7 @@ const Profile: React.FC = () => {
       {/* Collapsible Dev Tools */}
       <section className="space-y-2">
         <button 
-          onClick={() => setIsDevExpanded(!isDevExpanded)}
+          onClick={toggleDevTools}
           className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50/50 hover:bg-slate-100 transition-colors"
         >
           <div className="flex items-center gap-2">
@@ -283,6 +414,357 @@ const Profile: React.FC = () => {
                   </button>
 
                   <button 
+                    onClick={toggleToasts}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
+                  >
+                    <div className="flex items-center gap-3">
+                      {!showToasts ? <BellOff className="h-3.5 w-3.5 text-slate-400" /> : <BellRing className="h-3.5 w-3.5 text-emerald-400" />}
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">
+                        {!showToasts ? 'Enable Fallback Toasts' : 'Disable Fallback Toasts'}
+                      </span>
+                    </div>
+                    <div className={cn("h-1.5 w-1.5 rounded-full", !showToasts ? "bg-slate-600" : "bg-emerald-400")} />
+                  </button>
+
+                  <div className="mt-4 rounded-2xl bg-white/5 p-4 border border-white/10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-3.5 w-3.5 text-emerald-400" />
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-white/90">Vibration Status</h4>
+                      </div>
+                      <button 
+                        onClick={handleVibeTest}
+                        className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20 active:scale-95"
+                      >
+                        Vibe Check
+                      </button>
+                    </div>
+
+                    {!vibeDiag ? (
+                      <button 
+                        onClick={refreshVibeDiag}
+                        className="w-full text-[9px] font-bold text-slate-500 py-1"
+                      >
+                        Click to Scan Hardware...
+                      </button>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <span className="block text-[8px] font-bold text-slate-500 uppercase">Hardware API:</span>
+                          <span className={cn("inline-flex items-center gap-1 text-[9px] font-black uppercase", vibeDiag.apiSupported ? "text-emerald-400" : "text-rose-400")}>
+                            {vibeDiag.apiSupported ? 'Supported' : 'Blocked/None'}
+                          </span>
+                        </div>
+                        <div className="space-y-0.5">
+                          <span className="block text-[8px] font-bold text-slate-500 uppercase">Service Worker:</span>
+                          <span className={cn("inline-flex items-center gap-1 text-[9px] font-black uppercase", vibeDiag.serviceWorker === 'active' ? "text-emerald-400" : "text-orange-400")}>
+                            {vibeDiag.serviceWorker}
+                          </span>
+                        </div>
+                        <div className="col-span-2 mt-2 pt-2 border-t border-white/5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">Token Hub:</span>
+                            <span className={cn(
+                              "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
+                              profile?.tokenSource?.includes('native_bridge') 
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" 
+                                : "bg-amber-500/10 text-amber-500 border border-amber-500/10"
+                            )}>
+                              {profile?.tokenSource?.replace(/_/g, ' ') || 'Web Native SDK'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                             <span className="text-[9px] font-bold text-slate-500 uppercase">Detection Mode:</span>
+                             <span className={cn(
+                               "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
+                               navigator.userAgent.includes('w2n') 
+                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" 
+                                 : "bg-rose-500/10 text-rose-500"
+                             )}>
+                               {navigator.userAgent.includes('w2n') ? 'NATIVE APK DETECTED' : 'BROWSER MODE'}
+                             </span>
+                          </div>
+
+                          <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                             <span className="text-[9px] font-bold text-slate-500 uppercase">Script Injection:</span>
+                             <span className={cn(
+                               "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
+                               (window as any).__W2N_HEALTH_CHECK__ === 'Passed' 
+                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" 
+                                 : "bg-rose-500/10 text-rose-500"
+                             )}>
+                               {(window as any).__W2N_HEALTH_CHECK__ === 'Passed' ? 'INJECTION ACTIVE' : 'NO INJECTION FOUND'}
+                             </span>
+                          </div>
+
+                          <div className="flex flex-col gap-2 border-y border-white/5 py-3 mt-1">
+                             <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-slate-500 uppercase">Bridges Found:</span>
+                                 <div className="flex flex-wrap gap-1 justify-end max-w-[70%]">
+                                  {['webToNative', 'w2n', 'WTN', 'Native', 'Android', 'android', 'wtn', 'webtonative', 'JSBridge', 'AndroidInterface', 'webkit', 'flutter_inappwebview'].map(b => (
+                                    <span key={b} className={cn(
+                                      "text-[7px] font-bold px-1.5 py-0.5 rounded-sm border transition-colors",
+                                      bridgeStatus[b] ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-white/5 text-slate-600 border-transparent"
+                                    )}>
+                                      {b}
+                                    </span>
+                                  ))}
+                                </div>
+                             </div>
+                             
+                                 <button 
+                                    onClick={() => {
+                                      let d = '';
+                                      const getProps = (o: any) => {
+                                       if (!o) return 'null';
+                                       try {
+                                         let props = [];
+                                         for (let k in o) props.push(k);
+                                         let own = Object.getOwnPropertyNames(o);
+                                         return 'in:' + props.join(',') + ' own:' + own.join(',');
+                                       } catch(e) { return 'err'; }
+                                     };
+                                     try {
+                                       if ((window as any).Android) {
+                                          d += "ANDROID(cap): " + getProps((window as any).Android) + "\n";
+                                       }
+                                       if ((window as any).android) {
+                                         d += "android: " + getProps((window as any).android) + "\n";
+                                         if ((window as any).android.webview) {
+                                           d += "android.webview: " + getProps((window as any).android.webview) + "\n";
+                                         }
+                                       }
+                                       if ((window as any).webToNative) {
+                                          d += "W2N KEYS: " + getProps((window as any).webToNative) + "\n";
+                                       }
+                                       if ((window as any).webkit) {
+                                          d += "webkit: yes\n";
+                                          if ((window as any).webkit.messageHandlers) {
+                                            d += "webkit.handlers: " + getProps((window as any).webkit.messageHandlers) + "\n";
+                                          }
+                                       }
+                                       if (!d) d = "No obvious android/webToNative keys\n";
+                                       
+                                       // Global search
+                                       let found = [];
+                                       for (let k in window) {
+                                         try {
+                                           if (k === 'webkit' || k === 'android' || k === 'Android' || k === 'webToNative') continue;
+                                           if (typeof (window as any)[k] === 'object' && (window as any)[k] !== null && k !== 'window' && k !== 'document' && k !== 'location' && k !== 'navigator') {
+                                              let kL = k.toLowerCase();
+                                              if (kL.indexOf('native') !== -1 || kL.indexOf('bridge') !== -1 || kL.indexOf('app') !== -1) {
+                                                found.push(k + ':' + getProps((window as any)[k]));
+                                              }
+                                           }
+                                         } catch(e) {}
+                                       }
+                                       if (found.length > 0) d += "\nOther: " + found.join(' | ');
+                                       
+                                     } catch(e:any) {
+                                       d = "ERR: " + e.message;
+                                     }
+                                     (window as any).__W2N_LOGS__ = [d];
+                                     setRawStatus(d);
+                                   }}
+                                    className="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded border border-emerald-500/20 transition-all uppercase tracking-widest active:scale-95"
+                                 >
+                                    Scan Bridge
+                                 </button>
+                          </div>
+
+                          <div className="space-y-1 border-t border-white/5 pt-2">
+                             <span className="block text-[8px] font-bold text-slate-500 uppercase">App Context (Current URL):</span>
+                             <p className="text-[7px] font-mono leading-tight text-slate-400 break-all bg-black/20 p-1.5 rounded">
+                                {window.location.href}
+                             </p>
+                          </div>
+
+                          <div className="space-y-1 border-t border-white/5 pt-2">
+                             <div className="flex items-center justify-between">
+                                <span className="text-[8px] font-bold text-slate-500 uppercase">Bridge Debug Console:</span>
+                                <div className="flex items-center gap-3">
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(rawStatus).catch(() => {});
+                                    }}
+                                    className="text-[7px] text-emerald-400/60 hover:text-emerald-400 underline uppercase font-bold"
+                                  >
+                                    Copy
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      setBridgeStatus(prev => ({...prev, trigger: true}));
+                                      
+                                      // Try to invoke webToNative and WebToNativeInterface getFcmToken
+                                      let logs = [] as string[];
+                                      try {
+                                        if ((window as any).webToNative?.getFcmToken) {
+                                          logs.push('Called webToNative.getFcmToken()');
+                                          (window as any).webToNative.getFcmToken();
+                                        }
+                                        if ((window as any).webToNative?.askPermission) {
+                                          logs.push('Called webToNative.askPermission()');
+                                          (window as any).webToNative.askPermission();
+                                        }
+                                        if ((window as any).android?.getFcmToken) {
+                                          logs.push('Called android.getFcmToken()');
+                                          (window as any).android.getFcmToken();
+                                        }
+                                        
+                                        // The big one
+                                        if ((window as any).WebToNativeInterface) {
+                                          const w2n = (window as any).WebToNativeInterface;
+                                          logs.push('Found WebToNativeInterface!');
+                                          
+                                          // WebToNative often requires a STRING name of a global callback
+                                          (window as any).w2nCallback1 = (t:any) => { logs.push('w2nCallback1: ' + (typeof t === 'string' ? t.substring(0, 15) : 'object')); if(t) (window as any).__NATIVE_BRIDGE__.setToken(t); };
+                                          (window as any).w2nCallback2 = (t:any) => { logs.push('w2nCallback2: ' + (typeof t === 'string' ? t.substring(0, 15) : 'object')); if(t) (window as any).__NATIVE_BRIDGE__.setToken(t); };
+                                          (window as any).w2nCallback3 = (t:any) => { logs.push('w2nCallback3: ' + (typeof t === 'string' ? t.substring(0, 15) : 'object')); if(t) (window as any).__NATIVE_BRIDGE__.setToken(t); };
+                                          (window as any).w2nCallback4 = (t:any) => { logs.push('w2nCallback4: ' + (typeof t === 'string' ? t.substring(0, 15) : 'object')); if(t) (window as any).__NATIVE_BRIDGE__.setToken(t); };
+
+                                          if (w2n.requestNotificationPermission) {
+                                            try { w2n.requestNotificationPermission(); } catch(e){}
+                                          }
+                                          if (w2n.registerNotification) {
+                                            try { w2n.registerNotification(); } catch(e){}
+                                            try { w2n.registerNotification('w2nCallback1'); } catch(e){}
+                                          }
+                                          if (w2n.getRegistrationToken) {
+                                            try { w2n.getRegistrationToken(); } catch(e){}
+                                            try { w2n.getRegistrationToken('w2nCallback2'); } catch(e){}
+                                          }
+                                          if (w2n.getOneSignalId) {
+                                            try { w2n.getOneSignalId(); } catch(e){}
+                                            try { w2n.getOneSignalId('w2nCallback3'); } catch(e){}
+                                          }
+                                          if (w2n.getAppsFlyerAppId) {
+                                            try { w2n.getAppsFlyerAppId('w2nCallback4'); } catch(e){} // Just test if callbacks work at all!
+                                          }
+                                          
+                                          let polls = 0;
+                                          const pollToken = () => {
+                                            polls++;
+                                            if (polls > 20) {
+                                              logs.push('Stopped polling.');
+                                              (window as any).__W2N_LOGS__ = logs;
+                                              setRawStatus(logs.join(' | '));
+                                              return;
+                                            }
+                                            try {
+                                              let t = w2n.getRegistrationToken ? w2n.getRegistrationToken() : null;
+                                              let t2 = w2n.getOneSignalId ? w2n.getOneSignalId() : null;
+                                              
+                                              let resultToken = null;
+                                              if (t && typeof t === 'string' && t.length > 5) resultToken = t;
+                                              if (t2 && typeof t2 === 'string' && t2.length > 5) resultToken = t2;
+                                              
+                                              if (resultToken) {
+                                                logs.push(`Poll ${polls}: Got token! (${resultToken.substring(0,10)}...)`);
+                                                if ((window as any).__NATIVE_BRIDGE__) {
+                                                  (window as any).__NATIVE_BRIDGE__.setToken(resultToken);
+                                                }
+                                                (window as any).__W2N_LOGS__ = logs;
+                                                setRawStatus(logs.join(' | '));
+                                              } else {
+                                                logs.push(`Poll ${polls}: Empty/null`);
+                                                (window as any).__W2N_LOGS__ = logs;
+                                                setRawStatus(logs.join(' | '));
+                                                setTimeout(pollToken, 500);
+                                              }
+                                            } catch (e:any) {
+                                              logs.push(`Poll ERR: ${e.message}`);
+                                              (window as any).__W2N_LOGS__ = logs;
+                                              setRawStatus(logs.join(' | '));
+                                            }
+                                          };
+                                          
+                                          // WebToNative often passes token asynchronously to a global function or uses local storage.
+                                          const handleAsyncToken = (source: string, token: string) => {
+                                            if (token && typeof token === 'string' && token.length > 5) {
+                                              logs.push(`Async block triggered by ${source}! Token: ${token.substring(0,10)}...`);
+                                              if ((window as any).__NATIVE_BRIDGE__) {
+                                                (window as any).__NATIVE_BRIDGE__.setToken(token);
+                                              }
+                                              (window as any).__W2N_LOGS__ = logs;
+                                              setRawStatus(logs.join(' | '));
+                                            }
+                                          };
+                                          
+                                          try {
+                                            for (let i = 0; i < localStorage.length; i++) {
+                                              let k = localStorage.key(i);
+                                              if (k && (k.toLowerCase().includes('token') || k.toLowerCase().includes('fcm') || k.toLowerCase().includes('push'))) {
+                                                let v = localStorage.getItem(k);
+                                                if (v && v.length > 10) logs.push(`Found local storage ${k}: ${v.substring(0,10)}...`);
+                                              }
+                                            }
+                                          } catch(e){}
+                                          
+                                          (window as any).getRegistrationToken = (t:string) => handleAsyncToken('getRegistrationToken', t);
+                                          (window as any).setRegistrationToken = (t:string) => handleAsyncToken('setRegistrationToken', t);
+                                          (window as any).onRegistrationToken = (t:string) => handleAsyncToken('onRegistrationToken', t);
+                                          (window as any).returnRegistrationToken = (t:string) => handleAsyncToken('returnRegistrationToken', t);
+                                          (window as any).fcmTokenCallback = (t:string) => handleAsyncToken('fcmTokenCallback', t);
+                                          (window as any).pushTokenCallback = (t:string) => handleAsyncToken('pushTokenCallback', t);
+                                          (window as any).webToNativeToken = (t:string) => handleAsyncToken('webToNativeToken', t);
+                                          
+                                          // Try calling with callback strategies
+                                          try { if (w2n.getRegistrationToken) w2n.getRegistrationToken('getRegistrationToken'); } catch(e){}
+                                          try { if (w2n.getRegistrationToken) w2n.getRegistrationToken('onRegistrationToken'); } catch(e){}
+                                          try { if (w2n.getRegistrationToken) w2n.getRegistrationToken('fcmTokenCallback'); } catch(e){}
+                                          try { if (w2n.getRegistrationToken) w2n.getRegistrationToken((window as any).getRegistrationToken); } catch(e){}
+                                          try { if (w2n.getRegistrationToken) w2n.getRegistrationToken(); } catch(e){}
+                                          
+                                          // Also attempt getOneSignalId
+                                          try { if (w2n.getOneSignalId) w2n.getOneSignalId('onRegistrationToken'); } catch(e){}
+                                          try { if (w2n.getOneSignalId) w2n.getOneSignalId('getRegistrationToken'); } catch(e){}
+                                          
+                                          pollToken();
+                                          
+                                        } else {
+                                          (window as any).__W2N_LOGS__ = logs;
+                                          setRawStatus(logs.join(' | '));
+                                        }
+                                      } catch(e: any) {
+                                        logs.push(`ERROR: ${e.message}`);
+                                        (window as any).__W2N_LOGS__ = logs;
+                                        setRawStatus(logs.join(' | '));
+                                      }
+                                    }}
+                                    className="text-[7px] text-emerald-400/60 hover:text-emerald-400 underline uppercase font-bold"
+                                  >
+                                    Force Deep Scan
+                                  </button>
+                                </div>
+                             </div>
+                             <div className="text-[7px] font-mono leading-relaxed text-emerald-400/80 break-all bg-black/40 p-2.5 rounded border border-white/5 min-h-[60px] max-h-[120px] overflow-y-auto">
+                                {(rawStatus || 'No logs yet...').split(' | ').map((line, i) => (
+                                  <div key={i} className={cn("border-b border-white/5 last:border-0 py-1", i === 0 ? "opacity-100 font-bold" : "opacity-60")}>
+                                    {line}
+                                  </div>
+                                ))}
+                             </div>
+                             
+                          </div>
+
+                          <div className="space-y-1 border-t border-white/5 pt-2">
+                             <span className="block text-[8px] font-bold text-slate-500 uppercase">System Identity (UserAgent):</span>
+                             <p className="text-[7px] font-mono leading-tight text-slate-500 break-all bg-black/20 p-1.5 rounded">
+                                {navigator.userAgent}
+                             </p>
+                          </div>
+                          
+                          <span className="block text-[8px] font-bold text-slate-500 uppercase pt-2">Android Vibration Policy:</span>
+                          <p className="text-[8px] leading-relaxed font-medium text-slate-400 italic">
+                             Firebase vibrations are controlled by the OS "Notification Channel". If the popup appears but the phone stays silent, you must long-press the notification on your phone and set it to "Alerting/Default" instead of "Silent".
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button 
                     onClick={handleTestNotification}
                     className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
                   >
@@ -325,6 +807,61 @@ const Profile: React.FC = () => {
                     ) : fcmSuccess ? (
                       <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
                     ) : null}
+                  </button>
+
+                  <button 
+                    onClick={handleTestPureFirebasePush}
+                    disabled={pureFbLoading}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-purple-500/10 border border-purple-500/20 px-4 py-3 transition-all hover:bg-purple-500/20 active:scale-95 disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Server className={cn("h-3.5 w-3.5 shrink-0", pureFbSuccess ? 'text-emerald-400' : 'text-purple-400')} />
+                      <div className="text-left min-w-0 pr-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-purple-400/90 truncate">
+                          {pureFbSuccess ? 'Sent via pure Firebase' : 'Test Pure Firebase Push'}
+                        </span>
+                        <span className={cn("block text-[8px] font-bold mt-0.5 truncate", pureFbStatusMsg && !pureFbSuccess ? "text-red-400" : "text-purple-500/70")}>
+                          {pureFbStatusMsg || 'Exactly matches Firebase Console behavior'}
+                        </span>
+                      </div>
+                    </div>
+                    {pureFbLoading ? (
+                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-purple-400" />
+                    ) : pureFbSuccess ? (
+                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                    ) : null}
+                  </button>
+
+                  <button 
+                    onClick={async () => {
+                       setRawStatus('Repairing FCM Token...');
+                       localStorage.removeItem('native_fcm_token');
+                       localStorage.removeItem('last_synced_native_token');
+                       localStorage.removeItem('pending_native_token');
+                       (window as any).__NATIVE_TOKEN_STOLEN = null;
+                       
+                       if (user) {
+                         const res = await notificationService.registerWebPushToken(user.uid);
+                         setRawStatus(res.success ? 'FCM Web Token Restored!' : 'FCM Error: ' + res.message);
+                         
+                         setTimeout(() => {
+                            window.location.reload();
+                         }, 1500);
+                       }
+                    }}
+                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-red-500/10 border border-red-500/20 px-4 py-3 transition-all hover:bg-red-500/20 active:scale-95"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                      <div className="text-left min-w-0 pr-2">
+                        <span className="block text-[10px] font-black uppercase tracking-widest text-red-400/90 truncate">
+                          Repair Push FCM Token
+                        </span>
+                        <span className="block text-[8px] font-bold mt-0.5 truncate text-red-500/70">
+                          Use this if you see "Device Unregistered"
+                        </span>
+                      </div>
+                    </div>
                   </button>
 
                   {notificationService.getPermissionStatus() === 'pwa-required' && (
@@ -377,6 +914,32 @@ const Profile: React.FC = () => {
           )}
         </AnimatePresence>
       </section>
+
+      {/* App Refresh & Version */}
+      <div className="flex flex-col gap-3 pb-2 pt-2">
+         <button 
+           onClick={() => {
+             // Clear any cached flags without clearing valid tokens
+             window.location.reload();
+           }}
+           className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-blue-50 py-4 text-[10px] font-black uppercase tracking-widest text-blue-500 transition-all active:scale-95"
+         >
+           <RefreshCw className="h-3.5 w-3.5" />
+           Reload Workspace
+         </button>
+         
+         <div className="text-center">
+            <span className="text-[10px] font-black text-slate-400/50 uppercase tracking-widest">Version: v1.1.14</span>
+         </div>
+
+         <button 
+           onClick={() => {}}
+           className="flex w-full items-center justify-center gap-2 rounded-[20px] border border-slate-100 bg-white py-4 text-[10px] font-black uppercase tracking-widest text-slate-600 transition-all active:scale-95"
+         >
+           <LifeBuoy className="h-3.5 w-3.5 text-primary" />
+           Operational Support
+         </button>
+      </div>
 
       {/* Log Out Button */}
       <button 

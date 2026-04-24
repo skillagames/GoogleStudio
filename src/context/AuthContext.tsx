@@ -26,8 +26,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (uid: string) => {
     const userDoc = await getDoc(doc(db, 'users', uid));
+    let currentProfileData = null;
+
     if (userDoc.exists()) {
-      setProfile(userDoc.data());
+      currentProfileData = userDoc.data();
+      setProfile(currentProfileData);
     } else {
       // Create initial profile if it doesn't exist
       const initialProfile = {
@@ -38,7 +41,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showInsights: true,
       };
       await setDoc(doc(db, 'users', uid), initialProfile);
+      currentProfileData = initialProfile;
       setProfile(initialProfile);
+    }
+
+    // HOUSEKEEPING: Sync any native tokens captured before login
+    const pendingToken = localStorage.getItem('pending_native_token');
+    if (pendingToken) {
+      const { updateDoc } = await import('firebase/firestore');
+      await updateDoc(doc(db, 'users', uid), { 
+        fcmToken: pendingToken,
+        tokenSource: 'native_bridge_sync'
+      });
+      localStorage.removeItem('pending_native_token');
+      console.log('[AuthContext] Synced pending native token to user profile.');
     }
   };
 
