@@ -331,6 +331,16 @@ class NotificationService {
   }
 
   public async notify(options: NotificationOptions) {
+    // Respect user setting to disable web push engine
+    const savedWebPushDisabled = localStorage.getItem('webPushDisabled');
+    // If not set, it defaults to TRUE (Disabled) to avoid annoying users on first boot
+    const isDisabled = savedWebPushDisabled === null ? true : savedWebPushDisabled === 'true';
+    
+    if (isDisabled) {
+      console.log('[NotificationService] Web Push Engine is disabled, skipping notification');
+      return;
+    }
+
     const standalone = this.isStandalone();
     const isTest = options.tag === 'test-notification';
 
@@ -373,7 +383,7 @@ class NotificationService {
         w.cordova.plugins.notification.local.schedule({ title, text: body });
       }
       if (w.Capacitor && w.Capacitor.Plugins && w.Capacitor.Plugins.LocalNotifications) {
-        w.Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{ title, body, id: Date.now() }] });
+        w.Capacitor.Plugins.LocalNotifications.schedule({ notifications: [{ title, body, id: Math.floor(Math.random() * 2147483647) }] });
       }
 
       // Type D: iOS WKWebView Handlers
@@ -473,14 +483,26 @@ class NotificationService {
             fullOptions.icon = options.icon || APP_ICON_URL;
         }
         
-        // Android Chromium usually throws 'Illegal constructor' here unless heavily polyfilled by the wrapper.
-        // If the wrapper is listening, this connects.
-        // Avoid calling it if we are on Android to prevent Uncaught TypeError bubbling up to the user console.
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        if (!isAndroid) {
-          new Notification(options.title, fullOptions);
-        } else {
-          console.log('Skipped Classic Notification on Android to avoid Illegal constructor error');
+        // Android/Chromium usually throws 'Illegal constructor' here unless heavily polyfilled.
+        // We wrap in a try-catch and specific check to prevent console errors.
+        try {
+          // Detect if we are on a environment that likely forbids the constructor
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const isChrome = /Chrome/i.test(navigator.userAgent);
+          
+          // On Mobile Chrome/Android, we MUST use Service Worker showNotification
+          // Calling the constructor here will throw 'Illegal constructor'
+          if (!isMobile) {
+            new Notification(options.title, fullOptions);
+          } else {
+            console.log('[NotificationService] Mobile environment detected - skipping legacy Notification constructor');
+          }
+        } catch (e: any) {
+          if (e.message && (e.message.includes('Illegal constructor') || e.message.includes('constructor'))) {
+            console.log('[NotificationService] Browser requires SW.showNotification() - legacy call suppressed.');
+          } else {
+            console.warn('[NotificationService] Legacy Notification failed silently:', e.message);
+          }
         }
       } catch (error) {
         console.warn('Classic Notification constructor failed (expected if not polyfilled by wrapper):', error);
@@ -649,6 +671,15 @@ class NotificationService {
 
   public async checkDeviceExpirations(userId: string) {
     if (!userId) return;
+
+    // Respect user setting to disable notifications on startup
+    const savedWebPushDisabled = localStorage.getItem('webPushDisabled');
+    const isDisabled = savedWebPushDisabled === null ? true : savedWebPushDisabled === 'true';
+    
+    if (isDisabled) {
+      console.log('[NotificationService] Web Engine disabled, skipping startup maintenance alerts');
+      return;
+    }
 
     try {
       const alerts = await this.getAlerts(userId);

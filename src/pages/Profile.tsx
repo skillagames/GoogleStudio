@@ -172,7 +172,14 @@ const Profile: React.FC = () => {
   const [capTitle, setCapTitle] = useState('Local Payload');
   const [capNotifMsg, setCapNotifMsg] = useState('This is a local Capacitor notification test.');
   const [capSuccess, setCapSuccess] = useState(false);
-  const [webPushDisabled, setWebPushDisabled] = useState(true);
+  const [webPushDisabled, setWebPushDisabled] = useState(() => {
+    const saved = localStorage.getItem('webPushDisabled');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('webPushDisabled', webPushDisabled.toString());
+  }, [webPushDisabled]);
 
   const [vibeDiag, setVibeDiag] = useState<any>(null);
   const [isAndroidDebugExpanded, setIsAndroidDebugExpanded] = useState(false);
@@ -309,7 +316,7 @@ const Profile: React.FC = () => {
             {
               title: capTitle || 'Local Test',
               body: capNotifMsg || 'Test',
-              id: new Date().getTime(),
+              id: Math.floor(Math.random() * 2147483647), // Capacitor IDs must be 32-bit signed integers (max 2147483647)
               schedule: { at: new Date(Date.now() + 1000) }, // Schedule 1s to allow app to go to background
             }
           ]
