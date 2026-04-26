@@ -7,6 +7,7 @@ import { deviceService } from '../services/deviceService';
 import { notificationService } from '../services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import { doc, updateDoc } from 'firebase/firestore';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 const Profile: React.FC = () => {
   const { user, profile, refreshProfile } = useAuth();
@@ -168,7 +169,13 @@ const Profile: React.FC = () => {
   const [pureFbLoading, setPureFbLoading] = useState(false);
   const [pureFbStatusMsg, setPureFbStatusMsg] = useState('');
 
+  const [capTitle, setCapTitle] = useState('Local Payload');
+  const [capNotifMsg, setCapNotifMsg] = useState('This is a local Capacitor notification test.');
+  const [capSuccess, setCapSuccess] = useState(false);
+  const [webPushDisabled, setWebPushDisabled] = useState(true);
+
   const [vibeDiag, setVibeDiag] = useState<any>(null);
+  const [isAndroidDebugExpanded, setIsAndroidDebugExpanded] = useState(false);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -290,6 +297,31 @@ const Profile: React.FC = () => {
       setPureFbStatusMsg(err.message || 'Unknown network error');
     } finally {
       setPureFbLoading(false);
+    }
+  };
+
+  const handleTestCapacitorPush = async () => {
+    try {
+      if ((window as any).Capacitor?.isNativePlatform() || (window as any).Capacitor?.getPlatform() === 'web') {
+        await LocalNotifications.requestPermissions();
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: capTitle || 'Local Test',
+              body: capNotifMsg || 'Test',
+              id: new Date().getTime(),
+              schedule: { at: new Date(Date.now() + 1000) }, // Schedule 1s to allow app to go to background
+            }
+          ]
+        });
+        setCapSuccess(true);
+        setTimeout(() => setCapSuccess(false), 2000);
+      } else {
+        alert("Capacitor isn't running native plugin architecture here.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Capacitor Error: ' + String(e));
     }
   };
 
@@ -427,18 +459,25 @@ const Profile: React.FC = () => {
                   </button>
 
                   <div className="mt-4 rounded-2xl bg-white/5 p-4 border border-white/10">
-                    <div className="flex items-center justify-between mb-3">
+                    <button onClick={() => setIsAndroidDebugExpanded(!isAndroidDebugExpanded)} className="flex items-center justify-between w-full mb-1">
                       <div className="flex items-center gap-2">
                         <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                        <h4 className="text-[10px] font-black uppercase tracking-widest text-white/90">Vibration Status</h4>
+                        <h4 className="text-[10px] font-black uppercase tracking-widest text-white/90">Android Debugging</h4>
                       </div>
-                      <button 
-                        onClick={handleVibeTest}
-                        className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20 active:scale-95"
-                      >
-                        Vibe Check
-                      </button>
-                    </div>
+                      <ChevronDown className={cn("h-4 w-4 text-slate-400 transition-transform", isAndroidDebugExpanded ? "rotate-180" : "")} />
+                    </button>
+                    
+                    {isAndroidDebugExpanded && (
+                    <div className="pt-3 border-t border-white/10 mt-3 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vibration Diagnostics</span>
+                        <button 
+                          onClick={handleVibeTest}
+                          className="text-[9px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20 active:scale-95"
+                        >
+                          Vibe Check
+                        </button>
+                      </div>
 
                     {!vibeDiag ? (
                       <button 
@@ -762,109 +801,184 @@ const Profile: React.FC = () => {
                         </div>
                       </div>
                     )}
+                    </div>
+                  )}
                   </div>
 
-                  <button 
-                    onClick={handleTestNotification}
-                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-white/5 px-4 py-3 transition-all hover:bg-white/10 active:scale-95"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : (notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : notificationService.getPermissionStatus() === 'pwa-required' ? 'text-orange-400' : 'text-blue-400'))} />
-                      <div className="text-left">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
-                          {notifSuccess ? 'Signal Transmitted' : 'Test Local Pipeline'}
-                        </span>
-                        <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
-                          Status: {notificationService.getPermissionStatus().replace('-', ' ')}
-                        </span>
-                      </div>
-                    </div>
-                    {notifSuccess ? (
-                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3 text-slate-600" />
-                    )}
-                  </button>
+                  
+                   {/* --- Capacitor Native Engine Section --- */}
+                   <div className="mt-6 border-t border-slate-700/50 pt-4">
+                     <h4 className="text-[10px] font-black uppercase tracking-[0.1em] text-sky-400/90 mb-2 flex items-center justify-between">
+                       <span>Capacitor Native Engine</span>
+                       <Activity className="h-3.5 w-3.5 text-sky-400" />
+                     </h4>
+                     <p className="text-[8px] text-slate-400 font-medium mb-3 leading-relaxed">
+                       Primary method for bundled Android/iOS Apps using <strong>@capacitor/local-notifications</strong>.
+                     </p>
 
-                  <button 
-                    onClick={handleTestFCMPush}
-                    disabled={fcmLoading}
-                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-blue-500/10 border border-blue-500/20 px-4 py-3 transition-all hover:bg-blue-500/20 active:scale-95 disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Server className={cn("h-3.5 w-3.5 shrink-0", fcmSuccess ? 'text-emerald-400' : 'text-blue-400')} />
-                      <div className="text-left min-w-0 pr-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-blue-400/90 truncate">
-                          {fcmSuccess ? 'V1 Payload Routed' : 'Test FCM V1 Backend'}
-                        </span>
-                        <span className={cn("block text-[8px] font-bold mt-0.5 truncate", fcmStatusMsg && !fcmSuccess ? "text-red-400" : "text-blue-500/70")}>
-                          {fcmStatusMsg || 'Requires registered mobile fcmToken'}
-                        </span>
-                      </div>
-                    </div>
-                    {fcmLoading ? (
-                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-blue-400" />
-                    ) : fcmSuccess ? (
-                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
-                    ) : null}
-                  </button>
+                     <div className="p-3 bg-sky-500/10 border border-sky-500/20 rounded-[16px]">
+                       <input 
+                         value={capTitle}
+                         onChange={e => setCapTitle(e.target.value)}
+                         placeholder="Notification Title"
+                         className="w-full bg-slate-950/50 font-bold text-[10px] text-white px-3 py-2.5 rounded-lg mb-2 border border-white/5 outline-none focus:border-sky-500/50 transition-colors"
+                       />
+                       <textarea 
+                         value={capNotifMsg}
+                         onChange={e => setCapNotifMsg(e.target.value)}
+                         placeholder="Notification Body..."
+                         className="w-full bg-slate-950/50 text-slate-300 font-medium text-[10px] px-3 py-2.5 rounded-lg mb-3 border border-white/5 outline-none h-14 resize-none focus:border-sky-500/50 transition-colors"
+                       />
+                       <button
+                         onClick={handleTestCapacitorPush}
+                         className="flex w-full items-center justify-between rounded-xl bg-sky-500 py-3 px-4 shadow-lg shadow-sky-500/20 transition-all hover:bg-sky-400 active:scale-95 relative overflow-hidden"
+                       >
+                         {capSuccess && (
+                            <div className="absolute inset-0 bg-emerald-500 flex items-center justify-center z-10 animate-in fade-in zoom-in duration-300">
+                               <span className="text-[9px] font-black uppercase tracking-widest text-emerald-950 flex items-center gap-2">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                  Native Plugin Fired
+                               </span>
+                            </div>
+                         )}
+                         <span className="block text-[9px] font-black uppercase tracking-widest text-sky-950 relative z-0">Dispatch Native Alert</span>
+                         <BellRing className="h-3.5 w-3.5 text-sky-950 relative z-0" />
+                       </button>
+                     </div>
+                   </div>
 
-                  <button 
-                    onClick={handleTestPureFirebasePush}
-                    disabled={pureFbLoading}
-                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-purple-500/10 border border-purple-500/20 px-4 py-3 transition-all hover:bg-purple-500/20 active:scale-95 disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Server className={cn("h-3.5 w-3.5 shrink-0", pureFbSuccess ? 'text-emerald-400' : 'text-purple-400')} />
-                      <div className="text-left min-w-0 pr-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-purple-400/90 truncate">
-                          {pureFbSuccess ? 'Sent via pure Firebase' : 'Test Pure Firebase Push'}
-                        </span>
-                        <span className={cn("block text-[8px] font-bold mt-0.5 truncate", pureFbStatusMsg && !pureFbSuccess ? "text-red-400" : "text-purple-500/70")}>
-                          {pureFbStatusMsg || 'Exactly matches Firebase Console behavior'}
-                        </span>
-                      </div>
-                    </div>
-                    {pureFbLoading ? (
-                      <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-purple-400" />
-                    ) : pureFbSuccess ? (
-                      <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
-                    ) : null}
-                  </button>
+                   {/* --- Web Push Engine Section --- */}
+                   <div className="mt-8 border-t border-slate-700/50 pt-4 pb-4">
+                     <div className="flex items-center justify-between mb-2">
+                       <h4 className="text-[10px] font-black uppercase tracking-[0.1em] flex-1 text-purple-400/90 flex items-center gap-2">
+                         <span>Web Push Engine</span>
+                         <Server className="h-3 w-3" />
+                       </h4>
+                       <button
+                         onClick={() => setWebPushDisabled(!webPushDisabled)}
+                         className={cn(
+                           "px-2 py-1.5 rounded-md text-[8px] font-bold uppercase tracking-wider border transition-colors cursor-pointer",
+                           webPushDisabled ? "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30" : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30"
+                         )}
+                       >
+                         {webPushDisabled ? 'Web Actions Disabled' : 'Web Actions Enabled'}
+                       </button>
+                     </div>
+                     <p className="text-[8px] text-slate-400 font-medium mb-3 leading-relaxed">
+                       Standard Web APIs (Notification/SW). Best for Desktop/PWA. Toggle this off if you only want to test Capacitor natively to avoid duplicates.
+                     </p>
 
-                  <button 
-                    onClick={async () => {
-                       setRawStatus('Repairing FCM Token...');
-                       localStorage.removeItem('native_fcm_token');
-                       localStorage.removeItem('last_synced_native_token');
-                       localStorage.removeItem('pending_native_token');
-                       (window as any).__NATIVE_TOKEN_STOLEN = null;
+                     <div className={cn("transition-opacity duration-300 flex flex-col gap-2 relative", webPushDisabled ? "opacity-30 pointer-events-none cursor-not-allowed" : "opacity-100")}>
+                       {webPushDisabled && (
+                         <div className="absolute inset-0 z-10 flex items-center justify-center">
+                            <span className="text-[10px] font-black uppercase text-red-400 bg-black/60 px-3 py-1 rounded-full border border-red-500/20 shadow-xl backdrop-blur-sm">
+                               Web Engine Disabled
+                            </span>
+                         </div>
+                       )}
+                       <button 
+                         onClick={handleTestNotification}
+                         className="flex w-full items-center justify-between rounded-[16px] bg-white/5 border border-white/5 px-4 py-3 transition-all hover:bg-white/10"
+                       >
+                         <div className="flex items-center gap-3">
+                           <Bell className={cn("h-3.5 w-3.5", notifSuccess ? 'text-emerald-400' : (notificationService.getPermissionStatus() === 'granted' ? 'text-emerald-400/50' : notificationService.getPermissionStatus() === 'pwa-required' ? 'text-orange-400' : 'text-slate-400'))} />
+                           <div className="text-left">
+                             <span className="block text-[10px] font-black uppercase tracking-widest text-white/70">
+                               {notifSuccess ? 'Signal Transmitted' : 'Test Local Web Pipeline'}
+                             </span>
+                             <span className="block text-[7px] font-bold uppercase text-slate-500 mt-0.5">
+                               Status: {notificationService.getPermissionStatus().replace('-', ' ')}
+                             </span>
+                           </div>
+                         </div>
+                         {notifSuccess ? (
+                           <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                         ) : (
+                           <RefreshCw className="h-3 w-3 text-slate-600" />
+                         )}
+                       </button>
+
+                       <button 
+                         onClick={handleTestFCMPush}
+                         disabled={fcmLoading}
+                         className="flex w-full items-center justify-between rounded-[16px] bg-blue-500/10 border border-blue-500/20 px-4 py-3 transition-all hover:bg-blue-500/20 disabled:opacity-50"
+                       >
+                         <div className="flex items-center gap-3 min-w-0">
+                           <Server className={cn("h-3.5 w-3.5 shrink-0", fcmSuccess ? 'text-emerald-400' : 'text-blue-400')} />
+                           <div className="text-left min-w-0 pr-2">
+                             <span className="block text-[10px] font-black uppercase tracking-widest text-blue-400/90 truncate">
+                               {fcmSuccess ? 'V1 Payload Routed' : 'Test FCM V1 Web Backend'}
+                             </span>
+                             <span className={cn("block text-[8px] font-bold mt-0.5 truncate", fcmStatusMsg && !fcmSuccess ? "text-red-400" : "text-blue-500/70")}>
+                               {fcmStatusMsg || 'Requires registered mobile fcmToken'}
+                             </span>
+                           </div>
+                         </div>
+                         {fcmLoading ? (
+                           <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-blue-400" />
+                         ) : fcmSuccess ? (
+                           <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                         ) : null}
+                       </button>
+
+                       <button 
+                         onClick={handleTestPureFirebasePush}
+                         disabled={pureFbLoading}
+                         className="flex w-full items-center justify-between rounded-[16px] bg-purple-500/10 border border-purple-500/20 px-4 py-3 transition-all hover:bg-purple-500/20 disabled:opacity-50"
+                       >
+                         <div className="flex items-center gap-3 min-w-0">
+                           <Server className={cn("h-3.5 w-3.5 shrink-0", pureFbSuccess ? 'text-emerald-400' : 'text-purple-400')} />
+                           <div className="text-left min-w-0 pr-2">
+                             <span className="block text-[10px] font-black uppercase tracking-widest text-purple-400/90 truncate">
+                               {pureFbSuccess ? 'Sent via pure Firebase' : 'Test Pure FCM Console Behavior'}
+                             </span>
+                             <span className={cn("block text-[8px] font-bold mt-0.5 truncate", pureFbStatusMsg && !pureFbSuccess ? "text-red-400" : "text-purple-500/70")}>
+                               {pureFbStatusMsg || 'Direct console API format'}
+                             </span>
+                           </div>
+                         </div>
+                         {pureFbLoading ? (
+                           <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-purple-400" />
+                         ) : pureFbSuccess ? (
+                           <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                         ) : null}
+                       </button>
                        
-                       if (user) {
-                         const res = await notificationService.registerWebPushToken(user.uid);
-                         setRawStatus(res.success ? 'FCM Web Token Restored!' : 'FCM Error: ' + res.message);
-                         
-                         setTimeout(() => {
-                            window.location.reload();
-                         }, 1500);
-                       }
-                    }}
-                    className="mt-2 flex w-full items-center justify-between rounded-[16px] bg-red-500/10 border border-red-500/20 px-4 py-3 transition-all hover:bg-red-500/20 active:scale-95"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <RefreshCw className="h-3.5 w-3.5 shrink-0 text-red-400" />
-                      <div className="text-left min-w-0 pr-2">
-                        <span className="block text-[10px] font-black uppercase tracking-widest text-red-400/90 truncate">
-                          Repair Push FCM Token
-                        </span>
-                        <span className="block text-[8px] font-bold mt-0.5 truncate text-red-500/70">
-                          Use this if you see "Device Unregistered"
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-
-                  {notificationService.getPermissionStatus() === 'pwa-required' && (
+                       <button 
+                         onClick={async () => {
+                            setRawStatus('Repairing FCM Token...');
+                            localStorage.removeItem('native_fcm_token');
+                            localStorage.removeItem('last_synced_native_token');
+                            localStorage.removeItem('pending_native_token');
+                            (window as any).__NATIVE_TOKEN_STOLEN = null;
+                            
+                            if (user) {
+                              const res = await notificationService.registerWebPushToken(user.uid);
+                              setRawStatus(res.success ? 'FCM Web Token Restored!' : 'FCM Error: ' + res.message);
+                              
+                              setTimeout(() => {
+                                 window.location.reload();
+                              }, 1500);
+                            }
+                         }}
+                         className="flex w-full items-center justify-between rounded-[16px] bg-red-500/10 border border-red-500/20 px-4 py-3 transition-all hover:bg-red-500/20"
+                       >
+                         <div className="flex items-center gap-3 min-w-0">
+                           <RefreshCw className="h-3.5 w-3.5 shrink-0 text-red-400" />
+                           <div className="text-left min-w-0 pr-2">
+                             <span className="block text-[10px] font-black uppercase tracking-widest text-red-400/90 truncate">
+                               Repair Push FCM Token
+                             </span>
+                             <span className="block text-[8px] font-bold mt-0.5 truncate text-red-500/70">
+                               Use this if you see "Device Unregistered"
+                             </span>
+                           </div>
+                         </div>
+                       </button>
+                     </div>
+                   </div>
+                   
+                   {notificationService.getPermissionStatus() === 'pwa-required' && (
                     <div className="mt-2 text-[8px] font-medium text-orange-500 bg-orange-400/10 px-3 py-2 rounded-lg border border-orange-400/20 space-y-1">
                       <p><span className="text-orange-400 font-bold uppercase mr-1">PWA Mode Required:</span> This mobile browser requires the app to be installed for notifications.</p>
                       <p className="opacity-80">Tap the <span className="font-black">Share icon</span> then <span className="font-black underline">"Add to Home Screen"</span> to enable push signals.</p>

@@ -414,6 +414,8 @@ class NotificationService {
       swOptions.badge = APP_ICON_URL;
     }
 
+    let handledViaSW = false;
+
     // 3. Service Worker Path (Recommended for Android/APK)
     // Chromium on Android explicitly forbids the 'new Notification()' constructor
     if ('serviceWorker' in navigator) {
@@ -424,8 +426,6 @@ class NotificationService {
           if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
              await this.requestPermission();
           }
-
-          let handledViaSW = false;
 
           // Strategy A: Message Bus Bypass (Extremely reliable for wrapped WebViews)
           if (registration.active) {
@@ -452,7 +452,7 @@ class NotificationService {
     // 4. Classic Fallback & Wrapper Interceptor
     // Many APK wrappers specifically intercept the explicit `new Notification()` call.
     // By forcing this to run despite the OS, we ensure they catch it.
-    if (typeof Notification !== 'undefined') {
+    if (!handledViaSW && typeof Notification !== 'undefined') {
       try {
         if (!standalone && (Notification.permission as string) !== 'granted') {
           await this.requestPermission();
@@ -475,7 +475,13 @@ class NotificationService {
         
         // Android Chromium usually throws 'Illegal constructor' here unless heavily polyfilled by the wrapper.
         // If the wrapper is listening, this connects.
-        new Notification(options.title, fullOptions);
+        // Avoid calling it if we are on Android to prevent Uncaught TypeError bubbling up to the user console.
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (!isAndroid) {
+          new Notification(options.title, fullOptions);
+        } else {
+          console.log('Skipped Classic Notification on Android to avoid Illegal constructor error');
+        }
       } catch (error) {
         console.warn('Classic Notification constructor failed (expected if not polyfilled by wrapper):', error);
       }
