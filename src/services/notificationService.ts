@@ -419,11 +419,6 @@ class NotificationService {
       ]
     };
 
-    if (!standalone) {
-      swOptions.icon = options.icon || APP_ICON_URL;
-      swOptions.badge = APP_ICON_URL;
-    }
-
     let handledViaSW = false;
 
     // 3. Service Worker Path (Recommended for Android/APK)
@@ -477,11 +472,6 @@ class NotificationService {
           silent: false,
           renotify: true
         };
-        
-        // Strip data URIs in standalone fallback calls to prevent Android Bitmap decoding crashes.
-        if (!standalone) {
-            fullOptions.icon = options.icon || APP_ICON_URL;
-        }
         
         // Android/Chromium usually throws 'Illegal constructor' here unless heavily polyfilled.
         // We wrap in a try-catch and specific check to prevent console errors.

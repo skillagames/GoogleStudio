@@ -60,9 +60,7 @@ app.post('/api/push', async (req, res) => {
         notification: {
             title: safeTitle,
             body: safeBody,
-            sound: 'default',
-            icon: 'ic_stat_name',
-            color: '#000000'
+            sound: 'default'
         }
       }
     };
@@ -97,9 +95,48 @@ app.post('/api/firebase-push', async (req, res) => {
       android: {
         restrictedPackageName: 'Iot.connect.app',
         notification: {
-          sound: 'default',
-          icon: 'ic_stat_name',
+          sound: 'default'
+        }
+      },
+      token: token
+    };
+
+    const response = await admin.messaging().send(message);
+    res.json({ success: true, response });
+  } catch (error: any) {
+    console.error('Firebase Push Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/icon-push-test', async (req, res) => {
+  if (!initAdmin()) {
+    return res.status(500).json({ error: 'Firebase Admin not configured. Needs FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY secrets.' });
+  }
+
+  try {
+    const { token, title, body } = req.body;
+    
+    if (!token) return res.status(400).json({ error: 'Missing token' });
+
+    const safeTitle = title || 'Hello';
+    const safeBody = body || 'Awesome update!';
+
+    const message = {
+      notification: {
+        title: safeTitle,
+        body: safeBody
+        // no icon here
+      },
+      android: {
+        notification: {
+          // Do NOT specify icon here so AndroidManifest default is used
           color: '#000000'
+        }
+      },
+      webpush: {
+        notification: {
+          // No icon URL for web either
         }
       },
       token: token

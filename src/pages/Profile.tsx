@@ -6,7 +6,7 @@ import { auth, db } from '../lib/firebase';
 import { deviceService } from '../services/deviceService';
 import { notificationService } from '../services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 const Profile: React.FC = () => {
@@ -273,6 +273,47 @@ const Profile: React.FC = () => {
         setTimeout(() => setFcmSuccess(false), 4000);
       } else {
         setFcmStatusMsg(result.error || 'Unknown error');
+      }
+    } catch (e: any) {
+      setFcmStatusMsg(e.message || 'Client integration error');
+    } finally {
+      setFcmLoading(false);
+    }
+  };
+
+  const handleTestIconPush = async () => {
+    if (!user) return;
+    setFcmLoading(true);
+    setFcmStatusMsg('');
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const fcmToken = userDoc.data()?.fcmToken || userDoc.data()?.pushToken;
+      
+      if (!fcmToken) {
+        setFcmStatusMsg('User has no registered push token');
+        return;
+      }
+      
+      const response = await fetch('/api/icon-push-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          token: fcmToken,
+          title: "Hello " + Math.floor(Math.random() * 100),
+          body: "Awesome update from Dev Tools!"
+        })
+      });
+      
+      const payload = await response.json();
+      if (!response.ok) {
+         setFcmStatusMsg(payload.error || 'Server rejected push');
+      } else {
+         setFcmSuccess(true);
+         setFcmStatusMsg('Icon Test Signal Dispatched Successfully');
+         setTimeout(() => setFcmSuccess(false), 4000);
       }
     } catch (e: any) {
       setFcmStatusMsg(e.message || 'Client integration error');
@@ -947,6 +988,29 @@ const Profile: React.FC = () => {
                          {pureFbLoading ? (
                            <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-purple-400" />
                          ) : pureFbSuccess ? (
+                           <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                         ) : null}
+                       </button>
+
+                       <button 
+                         onClick={handleTestIconPush}
+                         disabled={fcmLoading}
+                         className="flex w-full items-center justify-between rounded-[16px] bg-pink-500/10 border border-pink-500/20 px-4 py-3 transition-all hover:bg-pink-500/20 disabled:opacity-50"
+                       >
+                         <div className="flex items-center gap-3 min-w-0">
+                           <Bell className={cn("h-3.5 w-3.5 shrink-0", fcmSuccess ? 'text-emerald-400' : 'text-pink-400')} />
+                           <div className="text-left min-w-0 pr-2">
+                             <span className="block text-[10px] font-black uppercase tracking-widest text-pink-400/90 truncate">
+                               {fcmSuccess ? 'Icon Test Sent' : 'Icon Notification Test'}
+                             </span>
+                             <span className={cn("block text-[8px] font-bold mt-0.5 truncate", fcmStatusMsg && !fcmSuccess && fcmStatusMsg.includes('error') ? "text-red-400" : "text-pink-500/70")}>
+                               {fcmStatusMsg && !fcmStatusMsg.includes('error') ? fcmStatusMsg : 'Test native manifest icon routing'}
+                             </span>
+                           </div>
+                         </div>
+                         {fcmLoading ? (
+                           <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-pink-400" />
+                         ) : fcmSuccess ? (
                            <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
                          ) : null}
                        </button>
