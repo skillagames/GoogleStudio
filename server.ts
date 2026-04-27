@@ -60,7 +60,9 @@ app.post('/api/push', async (req, res) => {
         notification: {
             title: safeTitle,
             body: safeBody,
-            sound: 'default'
+            sound: 'default',
+            icon: 'ic_stat_name',
+            color: '#000000'
         }
       }
     };
@@ -95,7 +97,9 @@ app.post('/api/firebase-push', async (req, res) => {
       android: {
         restrictedPackageName: 'Iot.connect.app',
         notification: {
-          sound: 'default'
+          sound: 'default',
+          icon: 'ic_stat_name',
+          color: '#000000'
         }
       },
       token: token
